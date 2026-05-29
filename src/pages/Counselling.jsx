@@ -15,8 +15,8 @@ export default function CounsellingSessions() {
     setLoading(true);
     try {
       const url = statusFilter
-        ? `/counselling-sessions?status=${statusFilter}`
-        : "/counselling-sessions";
+        ? `/counselling?status=${statusFilter}`
+        : "/counselling";
       const res = await api.get(url);
       setSessions(res.data.data?.data || res.data.data || []);
     } catch (error) {
@@ -33,8 +33,8 @@ export default function CounsellingSessions() {
       setLoading(true);
       try {
         const url = statusFilter
-          ? `/counselling-sessions?status=${statusFilter}`
-          : "/counselling-sessions";
+          ? `/counselling?status=${statusFilter}`
+          : "/counselling";
         const res = await api.get(url);
         if (active) {
           setSessions(res.data.data?.data || res.data.data || []);
@@ -68,7 +68,7 @@ export default function CounsellingSessions() {
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.put(`/counselling-sessions/${updatingSession}`, updateForm);
+      await api.put(`/counselling/${updatingSession}`, updateForm);
       setUpdatingSession(null);
       fetchSessions();
     } catch (err) {

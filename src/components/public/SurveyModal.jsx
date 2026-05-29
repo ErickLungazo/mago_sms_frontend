@@ -165,7 +165,8 @@ export default function SurveyModal({ isOpen, onClose }) {
       };
 
       const response = await api.post("/public/survey", payload);
-      setCredentials(response.data.data?.credentials ?? null);
+      // api.js unwraps response.data.data into response.data
+      setCredentials(response.data?.credentials ?? null);
       setIsSubmitted(true);
     } catch (err) {
       console.error("Submission Error:", err);
