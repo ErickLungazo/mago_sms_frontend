@@ -2,8 +2,15 @@ import { useState, useCallback, useEffect } from "react";
 import { authService } from "./apiServices";
 
 export function useAuth() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    const token = localStorage.getItem("auth_token");
+    const savedUser = localStorage.getItem("user");
+    return token && savedUser ? JSON.parse(savedUser) : null;
+  });
+  const [loading, setLoading] = useState(() => {
+    const token = localStorage.getItem("auth_token");
+    return !!token;
+  });
   const [error, setError] = useState(null);
 
   // Initialize auth state from localStorage
@@ -11,26 +18,25 @@ export function useAuth() {
     const token = localStorage.getItem("auth_token");
     const savedUser = localStorage.getItem("user");
 
-    if (token && savedUser) {
-      setUser(JSON.parse(savedUser));
-      // Optionally validate token with API
-      authService
-        .me()
-        .then((res) => {
-          const userData = res.data.data || res.data;
-          setUser(userData);
-          localStorage.setItem("user", JSON.stringify(userData));
-        })
-        .catch(() => {
-          // Token expired
-          localStorage.removeItem("auth_token");
-          localStorage.removeItem("user");
-          setUser(null);
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
+    if (!token || !savedUser) {
+      queueMicrotask(() => setLoading(false));
+      return;
     }
+
+    authService
+      .me()
+      .then((res) => {
+        const userData = res.data.data || res.data;
+        setUser(userData);
+        localStorage.setItem("user", JSON.stringify(userData));
+      })
+      .catch(() => {
+        // Token expired
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("user");
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const login = useCallback(async (email, password) => {
@@ -89,7 +95,7 @@ export function useAuth() {
   };
 }
 
-export function useApi(apiCall, deps = []) {
+export function useApi(apiCall) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -105,10 +111,10 @@ export function useApi(apiCall, deps = []) {
     } finally {
       setLoading(false);
     }
-  }, deps);
+  }, [apiCall]);
 
   useEffect(() => {
-    fetch();
+    queueMicrotask(fetch);
   }, [fetch]);
 
   return { data, loading, error, refetch: fetch };

@@ -31,16 +31,17 @@ export default function SatisfactionSurvey() {
       } catch (error) {
         console.error("Unable to resolve student lookup", error);
       }
+    } else {
+      setStudentName("");
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Clean payload to ensure empty selection values are transmitted as clean null markers
       const payload = {
         student_id: id,
-        admission_number: id, // Fallback support for public store validation parameters
+        admission_number: id,
         ...form,
         alternative_course_id:
           form.alternative_course_id === "" ? null : form.alternative_course_id,
@@ -69,190 +70,323 @@ export default function SatisfactionSurvey() {
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   if (submitted) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center animate-bounce">
-        <div className="text-8xl mb-6">🌟</div>
-        <h2 className="text-4xl font-black text-[#0a6e4e] mb-4">Thank You!</h2>
-        <p className="text-xl text-gray-500">
-          Your feedback has been recorded securely.
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="text-6xl mb-4 animate-bounce">🌟</div>
+        <h2 className="text-3xl font-bold text-emerald-800 mb-2">
+          Feedback Received
+        </h2>
+        <p className="text-slate-500 max-w-sm text-sm">
+          Your institutional metrics have been safely synchronized. Thank you
+          for helping optimize our academic pipelines.
         </p>
-        <p className="mt-12 text-sm text-gray-400 font-mono">
-          System auto-resetting...
+        <p className="mt-12 text-xs text-slate-400 font-mono tracking-widest animate-pulse">
+          SYSTEM AUTO-RESETTING...
         </p>
       </div>
     );
   }
 
+  // Find selected course name for print validation purposes
+  const chosenAlternativeCourse =
+    courses.find((c) => String(c.id) === String(form.alternative_course_id))
+      ?.name || "Stay in Current Course";
+
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="bg-white p-10 rounded-[40px] shadow-2xl shadow-[#0a6e4e]/5 border border-gray-100">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-black text-gray-900 mb-2">
-            Institutional Satisfaction Survey
-          </h2>
-          <p className="text-gray-400 font-medium tracking-tight uppercase text-xs">
-            Term 2 · 2026 Academic Year
-          </p>
+    <div
+      id="survey-print-root"
+      className="max-w-4xl mx-auto p-4 md:p-6 text-slate-800 antialiased"
+    >
+      {/* Precision Print Architecture */}
+      <style>{`
+        @media print {
+          body, html, #root {
+            visibility: hidden !important;
+            background: #ffffff !important;
+          }
+          #survey-print-root, #survey-print-root * {
+            visibility: visible !important;
+          }
+          #survey-print-root {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            padding: 0 !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .print-border-clean {
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+          }
+          .print-title {
+            font-size: 24px !important;
+            color: #000000 !important;
+          }
+        }
+      `}</style>
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden print-border-clean">
+        {/* Header Block */}
+        <div className="p-6 md:p-8 bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800">
+          <div>
+            <h2 className="text-xl md:text-2xl font-bold tracking-tight print-title">
+              Institutional Satisfaction Survey
+            </h2>
+            <p className="text-slate-400 text-xs uppercase font-semibold tracking-wider mt-1">
+              Term 2 · 2026 Academic Metric Gathering
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="no-print self-start sm:self-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 transition"
+          >
+            🖨️ Print Form State
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-12">
-          {/* Section 1: Identity */}
-          <div className="space-y-4">
-            <label className="text-sm font-black uppercase tracking-widest text-gray-400">
-              1. Your Identity
-            </label>
-            <input
-              required
-              className="w-full p-6 text-2xl rounded-3xl bg-gray-50 border-2 border-transparent focus:border-[#0a6e4e] focus:bg-white outline-none transition-all font-mono placeholder:text-gray-300"
-              placeholder="ENTER STUDENT ID (e.g. MG2024001)"
-              value={id}
-              onChange={(e) => checkStudent(e.target.value)}
-            />
+        {/* Workspace Matrix */}
+        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-8">
+          {/* Identity Matrix Grid */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 space-y-4">
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                Verification Pipeline
+              </label>
+              <input
+                required
+                className="w-full px-4 py-3 text-base rounded-lg border border-slate-200 bg-white focus:border-slate-400 outline-none transition font-mono uppercase tracking-wide placeholder:text-slate-300"
+                placeholder="ENTER STUDENT ID (e.g. MG2024001)"
+                value={id}
+                onChange={(e) => checkStudent(e.target.value)}
+              />
+            </div>
+
             {studentName && (
-              <div className="p-4 bg-green-50 rounded-2xl flex items-center gap-3 border border-green-100 animate-in slide-in-from-top-2">
-                <span className="text-xl">👤</span>
-                <span className="font-bold text-[#0a6e4e]">
-                  Welcome back, {studentName}!
+              <div className="p-3 bg-emerald-50 rounded-lg flex items-center gap-2.5 border border-emerald-100">
+                <span className="text-sm">👤</span>
+                <span className="text-xs font-bold text-emerald-800">
+                  Authenticated Record:{" "}
+                  <span className="underline">{studentName}</span>
                 </span>
               </div>
             )}
           </div>
 
-          {/* Section 2: Sentiment */}
-          <div className="space-y-4 text-center">
-            <label className="text-sm font-black uppercase tracking-widest text-gray-400">
-              2. How do you feel about your current course?
-            </label>
-            <div className="flex gap-4">
-              {[
-                {
-                  val: "Happy",
-                  emoji: "😊",
-                  bg: "hover:bg-green-50",
-                  active: "bg-green-600 text-white",
-                },
-                {
-                  val: "Neutral",
-                  emoji: "😐",
-                  bg: "hover:bg-gray-100",
-                  active: "bg-gray-600 text-white",
-                },
-                {
-                  val: "Unhappy",
-                  emoji: "☹️",
-                  bg: "hover:bg-red-50",
-                  active: "bg-red-600 text-white",
-                },
-              ].map((item) => (
-                <button
-                  key={item.val}
-                  type="button"
-                  onClick={() =>
-                    setForm({ ...form, satisfaction_rating: item.val })
-                  }
-                  className={`flex-1 p-6 rounded-3xl border-2 border-gray-100 transition-all flex flex-col items-center gap-2 ${form.satisfaction_rating === item.val ? item.active : `bg-white ${item.bg} text-gray-400`}`}
-                >
-                  <span className="text-4xl">{item.emoji}</span>
-                  <span className="font-black uppercase text-xs tracking-widest">
-                    {item.val}
-                  </span>
-                </button>
-              ))}
-            </div>
+          {/* Form Matrix Layout Engine Table (Visible Everywhere, Highly Stable for Print Layouts) */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <tbody className="divide-y divide-slate-100 text-xs md:text-sm">
+                {/* Sentiment Mapping */}
+                <tr>
+                  <td className="py-4 pr-4 font-semibold text-slate-500 w-full sm:w-1/3 align-top">
+                    1. Course Sentiment
+                  </td>
+                  <td className="py-4">
+                    <div className="flex gap-2 no-print">
+                      {[
+                        {
+                          val: "Happy",
+                          emoji: "😊",
+                          active:
+                            "bg-emerald-50 border-emerald-300 text-emerald-700 font-bold",
+                        },
+                        {
+                          val: "Neutral",
+                          emoji: "😐",
+                          active:
+                            "bg-slate-100 border-slate-300 text-slate-700 font-bold",
+                        },
+                        {
+                          val: "Unhappy",
+                          emoji: "☹️",
+                          active:
+                            "bg-rose-50 border-rose-300 text-rose-700 font-bold",
+                        },
+                      ].map((item) => (
+                        <button
+                          key={item.val}
+                          type="button"
+                          onClick={() =>
+                            setForm({ ...form, satisfaction_rating: item.val })
+                          }
+                          className={`flex-1 p-3 rounded-lg border transition text-center flex flex-col items-center gap-1 ${
+                            form.satisfaction_rating === item.val
+                              ? item.active
+                              : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
+                          }`}
+                        >
+                          <span className="text-xl">{item.emoji}</span>
+                          <span className="text-[10px] uppercase tracking-wider">
+                            {item.val}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                    {/* Fallback layout representation strictly captured during raw browser print actions */}
+                    <div className="hidden print:block font-bold text-slate-900">
+                      {form.satisfaction_rating}
+                    </div>
+                  </td>
+                </tr>
+
+                {/* Core Influence Factor */}
+                <tr>
+                  <td className="py-4 pr-4 font-semibold text-slate-500 align-top">
+                    2. Primary Decision Influencer
+                  </td>
+                  <td className="py-4">
+                    <div className="flex flex-wrap gap-1.5 no-print">
+                      {[
+                        "Self",
+                        "Parent/Guardian",
+                        "Teacher",
+                        "Peer/Friend",
+                        "Grade Placement",
+                      ].map((inf) => (
+                        <button
+                          key={inf}
+                          type="button"
+                          onClick={() => setForm({ ...form, influencer: inf })}
+                          className={`px-3 py-1.5 rounded-md border text-xs font-medium transition ${
+                            form.influencer === inf
+                              ? "border-slate-800 bg-slate-800 text-white font-semibold"
+                              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                          }`}
+                        >
+                          {inf}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="hidden print:block font-bold text-slate-900">
+                      {form.influencer}
+                    </div>
+                  </td>
+                </tr>
+
+                {/* Retention Roadmap */}
+                <tr>
+                  <td className="py-4 pr-4 font-semibold text-slate-500 align-top">
+                    3. Completion Intent Status
+                  </td>
+                  <td className="py-4">
+                    <div className="flex gap-2 max-w-xs no-print">
+                      {["Yes", "No", "Uncertain"].map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() =>
+                            setForm({ ...form, retention_intent: v })
+                          }
+                          className={`flex-1 py-1.5 rounded border text-xs font-medium transition ${
+                            form.retention_intent === v
+                              ? "bg-slate-900 text-white border-slate-900 font-semibold"
+                              : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                          }`}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="hidden print:block font-bold text-slate-900">
+                      {form.retention_intent}
+                    </div>
+                  </td>
+                </tr>
+
+                {/* Alternative Alignment Matrix */}
+                <tr>
+                  <td className="py-4 pr-4 font-semibold text-slate-500 align-top">
+                    4. Preferred Course Alternative
+                  </td>
+                  <td className="py-4">
+                    <select
+                      className="w-full max-w-md p-2 bg-white rounded-lg border border-slate-200 outline-none focus:border-slate-400 text-xs md:text-sm no-print"
+                      value={form.alternative_course_id}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          alternative_course_id: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="">STAY IN CURRENT COURSE</option>
+                      {courses.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="hidden print:block font-bold text-slate-900">
+                      {chosenAlternativeCourse}
+                    </div>
+                  </td>
+                </tr>
+
+                {/* Roadblocks Tracking */}
+                <tr>
+                  <td className="py-4 pr-4 font-semibold text-slate-500 align-top">
+                    5. Primary Roadblock Tracker
+                  </td>
+                  <td className="py-4">
+                    <select
+                      className="w-full max-w-md p-2 bg-white rounded-lg border border-slate-200 outline-none focus:border-slate-400 text-xs md:text-sm no-print"
+                      value={form.primary_challenge}
+                      onChange={(e) =>
+                        setForm({ ...form, primary_challenge: e.target.value })
+                      }
+                    >
+                      <option>None</option>
+                      <option>Academic Difficulty</option>
+                      <option>Financial Struggles</option>
+                      <option>Lack of Interest</option>
+                      <option>Career Prospects Doubt</option>
+                      <option>Family Pressure</option>
+                    </select>
+                    <div className="hidden print:block font-bold text-slate-900">
+                      {form.primary_challenge}
+                    </div>
+                  </td>
+                </tr>
+
+                {/* Deep-Dive Narrative Textarea */}
+                <tr>
+                  <td className="py-4 pr-4 font-semibold text-slate-500 align-top">
+                    6. Contextual Notes / Explanations
+                  </td>
+                  <td className="py-4">
+                    <textarea
+                      rows={3}
+                      className="w-full p-3 bg-white rounded-lg border border-slate-200 outline-none focus:border-slate-400 text-xs md:text-sm no-print placeholder:text-slate-300"
+                      placeholder="Provide raw breakdown or specific structural reasons behind selection mappings..."
+                      value={form.reason_text}
+                      onChange={(e) =>
+                        setForm({ ...form, reason_text: e.target.value })
+                      }
+                    />
+                    <p className="hidden print:block font-medium text-slate-700 whitespace-pre-wrap italic">
+                      {form.reason_text || "No notes submitted."}
+                    </p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          {/* Section 3: Influence */}
-          <div className="space-y-4">
-            <label className="text-sm font-black uppercase tracking-widest text-gray-400">
-              3. Who primarily influenced your choice?
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {[
-                "Self",
-                "Parent/Guardian",
-                "Teacher",
-                "Peer/Friend",
-                "Grade Placement",
-              ].map((inf) => (
-                <button
-                  key={inf}
-                  type="button"
-                  onClick={() => setForm({ ...form, influencer: inf })}
-                  className={`p-4 rounded-2xl border-2 text-sm font-bold transition-all ${form.influencer === inf ? "border-[#0a6e4e] bg-[#0a6e4e]/5 text-[#0a6e4e]" : "border-gray-100 text-gray-400"}`}
-                >
-                  {inf}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Section 4: Retention */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <label className="text-sm font-black uppercase tracking-widest text-gray-400">
-                4. Do you want to finish?
-              </label>
-              <div className="flex gap-2">
-                {["Yes", "No", "Uncertain"].map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setForm({ ...form, retention_intent: v })}
-                    className={`flex-1 py-4 rounded-2xl font-bold border-2 transition-all ${form.retention_intent === v ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-400 border-gray-100"}`}
-                  >
-                    {v}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-4">
-              <label className="text-sm font-black uppercase tracking-widest text-gray-400">
-                5. Preferred Alternative?
-              </label>
-              <select
-                className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent outline-none focus:bg-white focus:border-gray-200"
-                value={form.alternative_course_id}
-                onChange={(e) =>
-                  setForm({ ...form, alternative_course_id: e.target.value })
-                }
-              >
-                <option value="">STAY IN CURRENT COURSE</option>
-                {courses.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Section 5: Roadblocks */}
-          <div className="space-y-4">
-            <label className="text-sm font-black uppercase tracking-widest text-gray-400">
-              6. Primary roadblock or challenge?
-            </label>
-            <select
-              className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent outline-none"
-              value={form.primary_challenge}
-              onChange={(e) =>
-                setForm({ ...form, primary_challenge: e.target.value })
-              }
-            >
-              <option>None</option>
-              <option>Academic Difficulty</option>
-              <option>Financial Struggles</option>
-              <option>Lack of Interest</option>
-              <option>Career Prospects Doubt</option>
-              <option>Family Pressure</option>
-            </select>
-          </div>
-
+          {/* Form Actions submission Block */}
           <button
             type="submit"
-            className="w-full py-6 bg-[#0a6e4e] text-white rounded-[30px] font-black text-xl hover:scale-[1.02] active:scale-[0.98] transition-all shadow-2xl shadow-[#0a6e4e]/30"
+            className="no-print w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-sm tracking-wide transition shadow-sm"
           >
-            SUBMIT CONFIDENTIAL FEEDBACK
+            SUBMIT CONFIDENTIAL DATA MATRIX
           </button>
         </form>
       </div>

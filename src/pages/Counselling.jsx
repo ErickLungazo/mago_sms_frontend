@@ -18,7 +18,8 @@ export default function CounsellingSessions() {
         ? `/counselling?status=${statusFilter}`
         : "/counselling";
       const res = await api.get(url);
-      setSessions(res.data.data?.data || res.data.data || []);
+      const rawData = res.data?.data ?? res.data;
+      setSessions(Array.isArray(rawData) ? rawData : (rawData?.data ?? []));
     } catch (error) {
       console.error("Failed to retrieve counselling records", error);
     } finally {
@@ -37,7 +38,8 @@ export default function CounsellingSessions() {
           : "/counselling";
         const res = await api.get(url);
         if (active) {
-          setSessions(res.data.data?.data || res.data.data || []);
+          const rawData = res.data?.data ?? res.data;
+          setSessions(Array.isArray(rawData) ? rawData : (rawData?.data ?? []));
         }
       } catch (error) {
         if (active) {
@@ -79,107 +81,119 @@ export default function CounsellingSessions() {
   const getStatusStyles = (status) => {
     switch (status) {
       case "Pending":
-        return "bg-amber-100 text-amber-800 border-amber-200";
+        return "bg-amber-50 text-amber-700 border-amber-200/60";
       case "Open":
-        return "bg-blue-100 text-blue-800 border-blue-200";
+        return "bg-sky-50 text-sky-700 border-sky-200/60";
       case "Follow-up":
-        return "bg-purple-100 text-purple-800 border-purple-200";
+        return "bg-purple-50 text-purple-700 border-purple-200/60";
       case "Closed":
-        return "bg-green-100 text-green-800 border-green-200";
+        return "bg-emerald-50 text-emerald-700 border-emerald-200/60";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-slate-50 text-slate-600 border-slate-200";
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-        <div>
-          <h2 className="text-xl font-black text-gray-900">
+    <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 antialiased text-slate-800">
+      {/* Structural Filter Hub Block */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 lg:p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div className="space-y-0.5">
+          <h2 className="text-xl font-black tracking-tight text-slate-900">
             Counselling Session Matrix
           </h2>
-          <p className="text-sm text-gray-400">
-            Track structural guidance and mental health cases securely
+          <p className="text-xs font-medium text-slate-400">
+            Track structural student guidance pathways and confidential mental
+            health logs securely.
           </p>
         </div>
         <select
-          className="p-3 bg-gray-50 border-0 rounded-xl font-bold text-xs tracking-wider text-gray-600 outline-none uppercase"
+          className="h-10 w-full sm:w-56 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 outline-none transition focus:border-[#0a6e4e] focus:ring-1 focus:ring-[#0a6e4e] shadow-sm uppercase tracking-wide cursor-pointer"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
         >
-          <option value="">All Statuses</option>
+          <option value="">All Operational Statuses</option>
           <option value="Pending">⏱️ Pending Approval</option>
-          <option value="Open">📖 Active / Open</option>
+          <option value="Open">📖 Active / Open Case</option>
           <option value="Follow-up">🔄 Scheduled Follow-up</option>
-          <option value="Closed">✅ Closed Cases</option>
+          <option value="Closed">✅ Closed Case Archive</option>
         </select>
       </div>
 
+      {/* Dynamic Main Workspace Layer */}
       {loading ? (
-        <div className="flex justify-center items-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#0a6e4e]"></div>
+        <div className="flex flex-col justify-center items-center py-24 space-y-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-[#0a6e4e]"></div>
+          <span className="text-xs font-mono font-bold tracking-wider text-slate-400 uppercase">
+            Synchronizing Ledger Logs...
+          </span>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="space-y-4">
           {sessions.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-3xl border border-gray-100 text-gray-400 font-medium">
-              No matching counseling session records found.
+            <div className="text-center py-20 bg-white rounded-xl border border-slate-200 text-slate-400 text-xs font-medium italic">
+              No matching counseling session metrics found in this operational
+              division.
             </div>
           ) : (
             sessions.map((session) => (
               <div
                 key={session.id}
-                className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all"
+                className="bg-white border border-slate-200 rounded-xl p-5 lg:p-6 shadow-sm hover:border-slate-300 transition duration-200"
               >
-                <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
+                {/* Session Card Info Row */}
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-3 pb-4 border-b border-slate-100 mb-4">
                   <div>
-                    <h3 className="font-black text-lg text-gray-900">
-                      {session.student?.name || "Unknown Student"}
+                    <h3 className="font-black text-base text-slate-900 transition-colors hover:text-[#0a6e4e]">
+                      {session.student?.name || "Unknown Identity Specimen"}
                     </h3>
-                    <p className="text-xs font-mono text-gray-400 uppercase tracking-tight">
-                      ID: {session.student_id} · Type: {session.session_type}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-400 font-medium font-mono mt-0.5">
+                      <span>Ref Token: #{session.student_id}</span>
+                      <span className="text-slate-200">•</span>
+                      <span>
+                        Vector: {session.session_type || "General Intake"}
+                      </span>
+                    </div>
                   </div>
                   <span
-                    className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border ${getStatusStyles(session.status)}`}
+                    className={`inline-flex items-center rounded-md px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase border ${getStatusStyles(session.status)}`}
                   >
                     {session.status}
                   </span>
                 </div>
 
+                {/* Conditional Form State Toggle Panel */}
                 {updatingSession === session.id ? (
                   <form
                     onSubmit={handleUpdateSubmit}
-                    className="space-y-4 pt-2 bg-gray-50 p-4 rounded-2xl border border-gray-100 animate-in fade-in-50"
+                    className="space-y-4 p-4 rounded-xl border border-slate-200/80 bg-slate-50/50"
                   >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">
-                          Update Status
-                        </label>
-                        <select
-                          className="w-full p-3 bg-white border border-gray-200 rounded-xl font-bold text-sm"
-                          value={updateForm.status}
-                          onChange={(e) =>
-                            setUpdateForm({
-                              ...updateForm,
-                              status: e.target.value,
-                            })
-                          }
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="Open">Open</option>
-                          <option value="Follow-up">Follow-up</option>
-                          <option value="Closed">Closed</option>
-                        </select>
-                      </div>
+                    <div className="w-full max-w-xs space-y-1">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider font-mono">
+                        Shift Operational Pipeline Status
+                      </label>
+                      <select
+                        className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none focus:border-[#0a6e4e] focus:ring-1 focus:ring-[#0a6e4e] transition shadow-sm"
+                        value={updateForm.status}
+                        onChange={(e) =>
+                          setUpdateForm({
+                            ...updateForm,
+                            status: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Open">Open</option>
+                        <option value="Follow-up">Follow-up</option>
+                        <option value="Closed">Closed</option>
+                      </select>
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">
-                        Confidential Session Notes
+
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider font-mono">
+                        Confidential Case Log Evaluation Notes
                       </label>
                       <textarea
-                        className="w-full p-4 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:border-[#0a6e4e]"
+                        className="w-full p-3.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 outline-none focus:border-[#0a6e4e] focus:ring-1 focus:ring-[#0a6e4e] transition resize-none shadow-sm placeholder:text-slate-400"
                         rows="3"
                         value={updateForm.confidential_notes}
                         onChange={(e) =>
@@ -188,45 +202,57 @@ export default function CounsellingSessions() {
                             confidential_notes: e.target.value,
                           })
                         }
-                        placeholder="Document milestones, concerns, or remediation measures..."
+                        placeholder="Document qualitative milestone progress indicators or critical structural remediation flags..."
                       />
                     </div>
-                    <div className="flex justify-end gap-2">
+
+                    <div className="flex justify-end gap-2 pt-1">
                       <button
                         type="button"
                         onClick={() => setUpdatingSession(null)}
-                        className="px-4 py-2 text-xs font-bold text-gray-500 hover:bg-gray-200 rounded-xl transition-all"
+                        className="h-9 rounded-lg border border-slate-200 bg-white px-4 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
                       >
-                        Cancel
+                        Abort
                       </button>
                       <button
                         type="submit"
-                        className="px-5 py-2 text-xs font-black text-white bg-[#0a6e4e] rounded-xl shadow-lg shadow-[#0a6e4e]/20 transition-all"
+                        className="h-9 rounded-lg bg-[#0a6e4e] hover:bg-[#085a40] text-white px-4 text-xs font-bold shadow-sm transition"
                       >
-                        Save Changes
+                        Commit Updates
                       </button>
                     </div>
                   </form>
                 ) : (
-                  <div className="space-y-3">
-                    <p className="text-sm text-gray-600 bg-gray-50 p-4 rounded-2xl italic border border-gray-50 leading-relaxed">
+                  <div className="space-y-3.5">
+                    <p className="text-xs font-medium text-slate-600 bg-slate-50/60 p-4 rounded-lg border border-slate-100 leading-relaxed italic">
                       "
                       {session.confidential_notes ||
-                        "No confidential history documented for this block."}
+                        "No highly classified session background narrative elements documented for this block context."}
                       "
                     </p>
-                    <div className="flex justify-between items-center text-xs font-medium text-gray-400">
-                      <span>
-                        📅 Session Date:{" "}
-                        <b>
-                          {new Date(session.session_date).toLocaleDateString()}
-                        </b>
-                      </span>
+                    <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
+                      <div className="flex items-center gap-1">
+                        <span>📅 Intake Date:</span>
+                        <span className="text-slate-700 font-mono font-bold">
+                          {session.session_date
+                            ? new Date(session.session_date).toLocaleDateString(
+                                undefined,
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                },
+                              )
+                            : "—"}
+                        </span>
+                      </div>
                       <button
                         onClick={() => startUpdate(session)}
-                        className="text-[#0a6e4e] font-black uppercase hover:underline tracking-wider text-[11px]"
+                        className="text-[#0a6e4e] font-bold uppercase tracking-wider text-[10px] hover:text-[#085a40] transition flex items-center gap-1 group"
                       >
-                        ✍️ Edit Session
+                        <span className="group-hover:underline">
+                          ✍️ Modify Case File
+                        </span>
                       </button>
                     </div>
                   </div>

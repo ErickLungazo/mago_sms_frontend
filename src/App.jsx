@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import api from "./api";
 import Landing from "./pages/Landing";
 import CareerGuidance from "./pages/CareerGuidance";
 import Counselling from "./pages/Counselling";
 import Clubs from "./pages/Clubs";
 import Analytics from "./components/career/CareerAnalytics";
+import Interventions from "./components/career/Interventions";
+import JobPlacement from "./components/career/JobPlacement";
 import StudentDashboard from "./pages/StudentDashboard";
 
 // ── CONFIGURATION CONSTANTS ──────────────────────────────────────────────────
@@ -11,15 +15,18 @@ const BRAND = "#0a6e4e";
 const BRAND_LIGHT = "#e6f4ef";
 
 const NAV_ITEMS = [
-  { id: "dashboard", label: "Dashboard", icon: "📊" },
-  { id: "departments", label: "Departments", icon: "🏛️" },
-  { id: "courses", label: "Courses", icon: "📚" },
-  { id: "students", label: "Students", icon: "🎓" },
-  { id: "career", label: "Career Guidance", icon: "🧭" },
-  { id: "counselling", label: "Counselling", icon: "💬" },
-  { id: "clubs", label: "Clubs & Societies", icon: "🤝" },
-  { id: "staff", label: "Staff", icon: "👩‍🏫" },
-  { id: "analytics", label: "Analytics", icon: "📈" },
+  { id: "dashboard", label: "Dashboard", icon: "📊", path: "/dashboard" },
+  { id: "departments", label: "Departments", icon: "🏛️", path: "/departments" },
+  { id: "courses", label: "Courses", icon: "📚", path: "/courses" },
+  { id: "students", label: "Students", icon: "🎓", path: "/students" },
+  { id: "career", label: "Career Guidance", icon: "🧭", path: "/career" },
+  { id: "counselling", label: "Counselling", icon: "💬", path: "/counselling" },
+  { id: "clubs", label: "Clubs & Societies", icon: "🤝", path: "/clubs" },
+  { id: "certifications", label: "Certifications", icon: "📜", path: "/certifications" },
+  { id: "staff", label: "Staff", icon: "👩‍🏫", path: "/staff" },
+  { id: "analytics", label: "Analytics", icon: "📈", path: "/analytics" },
+  { id: "interventions", label: "Interventions", icon: "🆘", path: "/interventions" },
+  { id: "job-placements", label: "Job Placements", icon: "💼", path: "/job-placements" },
 ];
 
 const SATISFACTION_COLORS = {
@@ -272,7 +279,7 @@ function Dashboard({ dbData }) {
             deptsArr.map((d) => {
               const count =
                 studentsArr.filter(
-                  (s) => s?.department_id === d?.id || s?.dept === d?.name,
+                  (s) => (s?.course?.department_id || s?.course?.department?.id) === d?.id || s?.dept === d?.name,
                 ).length || 0;
               return (
                 <div
@@ -378,12 +385,9 @@ function Departments({ dbData, onRefresh, headers }) {
         title="Departments"
         action={editingDepartment ? "Edit Department" : "Add Department"}
         onAction={() => {
-          if (showForm && editingDepartment) {
-            resetForm();
-            return;
-          }
-          setShowForm((s) => !s);
-          if (!showForm) {
+          if (showForm && !editingDepartment) {
+            setShowForm(false);
+          } else {
             resetForm();
             setShowForm(true);
           }
@@ -635,21 +639,25 @@ function Courses({ dbData, onRefresh, headers }) {
   const [editingCourse, setEditingCourse] = useState(null);
   const [form, setForm] = useState({
     department_id: "",
+    certification_id: "",
+    certification_level_id: "",
     name: "",
     duration: "",
-    certification_type: "",
   });
   const coursesArr = Array.isArray(dbData?.courses) ? dbData.courses : [];
-  const departmentsArr = Array.isArray(dbData?.departments)
-    ? dbData.departments
-    : [];
+  const departmentsArr = Array.isArray(dbData?.departments) ? dbData.departments : [];
+  const certificationsArr = Array.isArray(dbData?.certifications) ? dbData.certifications : [];
+  
+  const selectedCertification = certificationsArr.find(c => String(c.id) === String(form.certification_id));
+  const levelsArr = selectedCertification?.levels || [];
 
   const resetForm = () => {
     setForm({
       department_id: "",
+      certification_id: "",
+      certification_level_id: "",
       name: "",
       duration: "",
-      certification_type: "",
     });
     setEditingCourse(null);
     setShowForm(false);
@@ -657,18 +665,16 @@ function Courses({ dbData, onRefresh, headers }) {
 
   const handleSave = async () => {
     const method = editingCourse ? "PUT" : "POST";
-    const url = editingCourse
-      ? `/api/courses/${editingCourse.id}`
-      : "/api/courses";
+    const url = editingCourse ? `/api/courses/${editingCourse.id}` : "/api/courses";
 
     await fetch(url, {
       method,
       headers,
       body: JSON.stringify({
         department_id: form.department_id,
+        certification_level_id: form.certification_level_id,
         name: form.name,
-        duration: parseInt(form.duration, 10) || 1,
-        certification_type: form.certification_type,
+        duration: form.duration,
       }),
     });
 
@@ -680,10 +686,10 @@ function Courses({ dbData, onRefresh, headers }) {
     setEditingCourse(course);
     setForm({
       department_id: course?.department_id || "",
+      certification_id: course?.certification_level?.certification_id || "",
+      certification_level_id: course?.certification_level_id || "",
       name: course?.name || "",
-      duration: course?.duration?.toString() || "",
-      certification_type:
-        course?.certification_type || course?.certification || "",
+      duration: course?.duration || "",
     });
     setShowForm(true);
   };
@@ -697,15 +703,34 @@ function Courses({ dbData, onRefresh, headers }) {
     onRefresh();
   };
 
+  const handleLevelChange = (levelId) => {
+    const level = levelsArr.find(l => String(l.id) === String(levelId));
+    setForm(f => ({
+      ...f,
+      certification_level_id: levelId,
+      duration: level ? `${level.period_count} ${level.duration_type}` : f.duration
+    }));
+  };
+
   return (
     <div>
       <SectionHeader
         title="Active Curriculum Programs"
         action="Add Course"
         onAction={() => {
-          setShowForm((s) => !s);
-          setEditingCourse(null);
-          if (!showForm) resetForm();
+          if (showForm && !editingCourse) {
+            setShowForm(false);
+          } else {
+            setEditingCourse(null);
+            setForm({
+              department_id: "",
+              certification_id: "",
+              certification_level_id: "",
+              name: "",
+              duration: "",
+            });
+            setShowForm(true);
+          }
         }}
       />
       {showForm && (
@@ -726,242 +751,106 @@ function Courses({ dbData, onRefresh, headers }) {
             }}
           >
             <div>
-              <label
-                style={{
-                  fontSize: 12,
-                  color: "#374151",
-                  display: "block",
-                  marginBottom: 4,
-                }}
-              >
-                Department
-              </label>
+              <label style={{ fontSize: 12, color: "#374151", display: "block", marginBottom: 4 }}>Department</label>
               <select
                 value={form.department_id}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, department_id: e.target.value }))
-                }
-                style={{
-                  width: "100%",
-                  padding: "7px 10px",
-                  border: "0.5px solid #d1d5db",
-                  borderRadius: 7,
-                  fontSize: 13,
-                  boxSizing: "border-box",
-                }}
+                onChange={(e) => setForm((f) => ({ ...f, department_id: e.target.value }))}
+                style={{ width: "100%", padding: "7px 10px", border: "0.5px solid #d1d5db", borderRadius: 7, fontSize: 13, boxSizing: "border-box" }}
               >
                 <option value="">Select Department...</option>
-                {departmentsArr.map((dept) => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </option>
-                ))}
+                {departmentsArr.map((dept) => <option key={dept.id} value={dept.id}>{dept.name}</option>)}
               </select>
             </div>
             <div>
-              <label
-                style={{
-                  fontSize: 12,
-                  color: "#374151",
-                  display: "block",
-                  marginBottom: 4,
-                }}
+              <label style={{ fontSize: 12, color: "#374151", display: "block", marginBottom: 4 }}>Certification Authority</label>
+              <select
+                value={form.certification_id}
+                onChange={(e) => setForm((f) => ({ ...f, certification_id: e.target.value, certification_level_id: "" }))}
+                style={{ width: "100%", padding: "7px 10px", border: "0.5px solid #d1d5db", borderRadius: 7, fontSize: 13, boxSizing: "border-box" }}
               >
-                Course Name
-              </label>
+                <option value="">Select Certification...</option>
+                {certificationsArr.map((cert) => <option key={cert.id} value={cert.id}>{cert.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: "#374151", display: "block", marginBottom: 4 }}>Level / Grade</label>
+              <select
+                value={form.certification_level_id}
+                onChange={(e) => handleLevelChange(e.target.value)}
+                disabled={!form.certification_id}
+                style={{ width: "100%", padding: "7px 10px", border: "0.5px solid #d1d5db", borderRadius: 7, fontSize: 13, boxSizing: "border-box" }}
+              >
+                <option value="">Select Level...</option>
+                {levelsArr.map((lvl) => <option key={lvl.id} value={lvl.id}>{lvl.name}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12, marginTop: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: "#374151", display: "block", marginBottom: 4 }}>Course Name</label>
               <input
                 value={form.name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, name: e.target.value }))
-                }
-                style={{
-                  width: "100%",
-                  padding: "7px 10px",
-                  border: "0.5px solid #d1d5db",
-                  borderRadius: 7,
-                  fontSize: 13,
-                  boxSizing: "border-box",
-                }}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Solar Systems Engineering"
+                style={{ width: "100%", padding: "7px 10px", border: "0.5px solid #d1d5db", borderRadius: 7, fontSize: 13, boxSizing: "border-box" }}
               />
             </div>
             <div>
-              <label
-                style={{
-                  fontSize: 12,
-                  color: "#374151",
-                  display: "block",
-                  marginBottom: 4,
-                }}
-              >
-                Duration (years)
-              </label>
+              <label style={{ fontSize: 12, color: "#374151", display: "block", marginBottom: 4 }}>Duration Override</label>
               <input
-                type="number"
-                min="1"
                 value={form.duration}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, duration: e.target.value }))
-                }
-                style={{
-                  width: "100%",
-                  padding: "7px 10px",
-                  border: "0.5px solid #d1d5db",
-                  borderRadius: 7,
-                  fontSize: 13,
-                  boxSizing: "border-box",
-                }}
+                onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value }))}
+                placeholder="e.g. 24 Months"
+                style={{ width: "100%", padding: "7px 10px", border: "0.5px solid #d1d5db", borderRadius: 7, fontSize: 13, boxSizing: "border-box" }}
               />
             </div>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <label
-              style={{
-                fontSize: 12,
-                color: "#374151",
-                display: "block",
-                marginBottom: 4,
-              }}
-            >
-              Certification Type
-            </label>
-            <input
-              value={form.certification_type}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, certification_type: e.target.value }))
-              }
-              style={{
-                width: "100%",
-                padding: "7px 10px",
-                border: "0.5px solid #d1d5db",
-                borderRadius: 7,
-                fontSize: 13,
-                boxSizing: "border-box",
-              }}
-            />
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
             <button
               onClick={handleSave}
-              style={{
-                background: BRAND,
-                color: "#fff",
-                border: "none",
-                borderRadius: 7,
-                padding: "8px 20px",
-                cursor: "pointer",
-              }}
+              disabled={!form.department_id || !form.certification_level_id || !form.name}
+              style={{ background: BRAND, color: "#fff", border: "none", borderRadius: 7, padding: "8px 20px", cursor: "pointer", opacity: (!form.department_id || !form.certification_level_id || !form.name) ? 0.6 : 1 }}
             >
               {editingCourse ? "Update Course" : "Save Course"}
             </button>
-            {editingCourse && (
-              <button
-                type="button"
-                onClick={resetForm}
-                style={{
-                  background: "#fff",
-                  border: "1px solid #d1d5db",
-                  borderRadius: 7,
-                  padding: "8px 20px",
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={resetForm}
+              style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 7, padding: "8px 20px", cursor: "pointer" }}
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
       <div style={{ overflowX: "auto" }}>
-        <table
-          style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}
-        >
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: "#f9fafb" }}>
-              {[
-                "Course Name",
-                "Duration",
-                "Certification",
-                "Created",
-                "Actions",
-              ].map((h) => (
-                <th
-                  key={h}
-                  style={{
-                    padding: "10px 14px",
-                    textAlign: "left",
-                    color: "#6b7280",
-                    borderBottom: "0.5px solid #e5e7eb",
-                  }}
-                >
-                  {h}
-                </th>
+              {["Course Name", "Certification", "Level", "Duration", "Actions"].map((h) => (
+                <th key={h} style={{ padding: "10px 14px", textAlign: "left", color: "#6b7280", borderBottom: "0.5px solid #e5e7eb" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {coursesArr.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={5}
-                  style={{ padding: 14, color: "#9ca3af", textAlign: "center" }}
-                >
-                  No catalog rows returned.
-                </td>
-              </tr>
+              <tr><td colSpan={5} style={{ padding: 14, color: "#9ca3af", textAlign: "center" }}>No catalog rows returned.</td></tr>
             ) : (
               coursesArr.map((c) => (
                 <tr key={c?.id} style={{ borderBottom: "0.5px solid #f3f4f6" }}>
-                  <td style={{ padding: "10px 14px", fontWeight: 500 }}>
-                    {c?.name}
-                  </td>
-                  <td style={{ padding: "10px 14px" }}>
-                    {c?.duration || "Modular"}
-                  </td>
+                  <td style={{ padding: "10px 14px", fontWeight: 500 }}>{c?.name}</td>
                   <td style={{ padding: "10px 14px" }}>
                     <Badge
-                      label={
-                        c?.certification_type ||
-                        c?.certification ||
-                        "NITA / KNEC"
-                      }
+                      label={c?.certification_level?.certification?.acronym || c?.certification_level?.certification?.name || "N/A"}
                       color="#1a6eb5"
                       bg="#dbeafe"
                     />
                   </td>
-                  <td style={{ padding: "10px 14px", color: "#9ca3af" }}>
-                    {c?.created_at
-                      ? new Date(c.created_at).toLocaleDateString()
-                      : "—"}
-                  </td>
+                  <td style={{ padding: "10px 14px", color: "#6b7280" }}>{c?.certification_level?.name || "—"}</td>
+                  <td style={{ padding: "10px 14px" }}>{c?.duration || "Modular"}</td>
                   <td style={{ padding: "10px 14px", display: "flex", gap: 6 }}>
-                    <button
-                      type="button"
-                      onClick={() => startEdit(c)}
-                      style={{
-                        background: "#eef2ff",
-                        border: "none",
-                        borderRadius: 6,
-                        color: "#1d4ed8",
-                        padding: "6px 10px",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(c)}
-                      style={{
-                        background: "#fee2e2",
-                        border: "none",
-                        borderRadius: 6,
-                        color: "#b91c1c",
-                        padding: "6px 10px",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Delete
-                    </button>
+                    <button type="button" onClick={() => startEdit(c)} style={{ background: "#eef2ff", border: "none", borderRadius: 6, color: "#1d4ed8", padding: "6px 10px", cursor: "pointer" }}>Edit</button>
+                    <button type="button" onClick={() => handleDelete(c)} style={{ background: "#fee2e2", border: "none", borderRadius: 6, color: "#b91c1c", padding: "6px 10px", cursor: "pointer" }}>Delete</button>
                   </td>
                 </tr>
               ))
@@ -1081,8 +970,12 @@ function Students({ dbData, onRefresh, headers }) {
         title="Student Records Registry"
         action="Enrol Student"
         onAction={() => {
-          setShowForm((s) => !s);
-          if (!showForm) resetForm();
+          if (showForm && !editingStudent) {
+            setShowForm(false);
+          } else {
+            resetForm(); // We can call resetForm here because we are setting showForm(true) immediately after
+            setShowForm(true);
+          }
         }}
       />
       {showForm && (
@@ -1673,34 +1566,222 @@ function Staff({ dbData, onRefresh, headers }) {
   );
 }
 
+function Certifications({ dbData, onRefresh, headers }) {
+  const [showForm, setShowForm] = useState(false);
+  const [showLevelForm, setShowLevelForm] = useState(false);
+  const [selectedCertId, setSelectedCertId] = useState(null);
+  const [editingCert, setEditingCert] = useState(null);
+  const [editingLevel, setEditingLevel] = useState(null);
+
+  const [certForm, setCertForm] = useState({ name: "", acronym: "", description: "" });
+  const [levelForm, setLevelForm] = useState({ name: "", duration_type: "Months", period_count: "", default_modules_count: "1" });
+
+  const certificationsArr = Array.isArray(dbData?.certifications) ? dbData.certifications : [];
+  const selectedCert = certificationsArr.find(c => c.id === selectedCertId);
+
+  const handleCertSave = async () => {
+    const method = editingCert ? "PUT" : "POST";
+    const url = editingCert ? `/api/certifications/${editingCert.id}` : "/api/certifications";
+    await fetch(url, { method, headers, body: JSON.stringify(certForm) });
+    onRefresh();
+    setShowForm(false);
+    setEditingCert(null);
+    setCertForm({ name: "", acronym: "", description: "" });
+  };
+
+  const handleLevelSave = async () => {
+    const method = editingLevel ? "PUT" : "POST";
+    const url = editingLevel ? `/api/certification-levels/${editingLevel.id}` : "/api/certification-levels";
+    await fetch(url, {
+      method,
+      headers,
+      body: JSON.stringify({ ...levelForm, certification_id: selectedCertId })
+    });
+    onRefresh();
+    setShowLevelForm(false);
+    setEditingLevel(null);
+    setLevelForm({ name: "", duration_type: "Months", period_count: "", default_modules_count: "1" });
+  };
+
+  const deleteCert = async (id) => {
+    if (!window.confirm("Delete this certification authority?")) return;
+    await fetch(`/api/certifications/${id}`, { method: "DELETE", headers });
+    onRefresh();
+    if (selectedCertId === id) setSelectedCertId(null);
+  };
+
+  const deleteLevel = async (id) => {
+    if (!window.confirm("Delete this level/grade?")) return;
+    await fetch(`/api/certification-levels/${id}`, { method: "DELETE", headers });
+    onRefresh();
+  };
+
+  return (
+    <div>
+      <SectionHeader
+        title="Certification Authorities"
+        action="Add Authority"
+        onAction={() => { setShowForm(true); setEditingCert(null); setCertForm({ name: "", acronym: "", description: "" }); }}
+      />
+
+      {showForm && (
+        <div style={{ background: "#f0faf6", border: "0.5px solid #a7f3d0", borderRadius: 10, padding: 18, marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <input placeholder="Name (e.g. TVET CDACC)" value={certForm.name} onChange={e => setCertForm({ ...certForm, name: e.target.value })} style={{ padding: 8, borderRadius: 7, border: "1px solid #d1d5db" }} />
+            <input placeholder="Acronym (e.g. CDACC)" value={certForm.acronym} onChange={e => setCertForm({ ...certForm, acronym: e.target.value })} style={{ padding: 8, borderRadius: 7, border: "1px solid #d1d5db" }} />
+          </div>
+          <textarea placeholder="Description..." value={certForm.description} onChange={e => setCertForm({ ...certForm, description: e.target.value })} style={{ width: "100%", padding: 8, borderRadius: 7, border: "1px solid #d1d5db", marginTop: 12 }} />
+          <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
+            <button onClick={handleCertSave} style={{ background: BRAND, color: "#fff", border: "none", borderRadius: 7, padding: "8px 20px", cursor: "pointer" }}>Save Authority</button>
+            <button onClick={() => setShowForm(false)} style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 7, padding: "8px 20px", cursor: "pointer" }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: 20 }}>
+        {/* Left: Cert List */}
+        <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
+          {certificationsArr.map(cert => (
+            <div
+              key={cert.id}
+              onClick={() => setSelectedCertId(cert.id)}
+              style={{
+                padding: "12px 16px",
+                borderBottom: "0.5px solid #f3f4f6",
+                cursor: "pointer",
+                background: selectedCertId === cert.id ? BRAND_LIGHT : "transparent"
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontWeight: 600 }}>{cert.acronym || cert.name}</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={(e) => { 
+                    e.stopPropagation(); 
+                    setEditingCert(cert); 
+                    setCertForm({
+                      name: cert.name || "",
+                      acronym: cert.acronym || "",
+                      description: cert.description || ""
+                    }); 
+                    setShowForm(true); 
+                  }} style={{ fontSize: 10, color: BRAND, border: "none", background: "none", cursor: "pointer" }}>Edit</button>
+                  <button onClick={(e) => { e.stopPropagation(); deleteCert(cert.id); }} style={{ fontSize: 10, color: "#dc2626", border: "none", background: "none", cursor: "pointer" }}>Delete</button>
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: "#6b7280" }}>{cert.name}</div>
+            </div>
+          ))}
+          {certificationsArr.length === 0 && <div style={{ padding: 20, textAlign: "center", color: "#9ca3af" }}>No authorities defined.</div>}
+        </div>
+
+        {/* Right: Levels List */}
+        <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 12, padding: 16 }}>
+          {selectedCert ? (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h4 style={{ margin: 0 }}>Levels for {selectedCert.acronym || selectedCert.name}</h4>
+                <button onClick={() => { setShowLevelForm(true); setEditingLevel(null); setLevelForm({ name: "", duration_type: "Months", period_count: "", default_modules_count: "1" }); }} style={{ background: BRAND, color: "#fff", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>+ Add Level / Grade</button>
+              </div>
+
+              {showLevelForm && (
+                <div style={{ background: "#f9fafb", padding: 12, borderRadius: 8, marginBottom: 16, border: "0.5px solid #e5e7eb" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr", gap: 8 }}>
+                    <div>
+                      <label style={{ fontSize: 10, color: "#6b7280", display: "block", marginBottom: 2 }}>Level Name</label>
+                      <input placeholder="Level 3 / GTT 1" value={levelForm.name} onChange={e => setLevelForm({ ...levelForm, name: e.target.value })} style={{ width: "100%", padding: 6, borderRadius: 5, border: "1px solid #d1d5db", fontSize: 12, boxSizing: "border-box" }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 10, color: "#6b7280", display: "block", marginBottom: 2 }}>Duration Type</label>
+                      <select value={levelForm.duration_type} onChange={e => setLevelForm({ ...levelForm, duration_type: e.target.value })} style={{ width: "100%", padding: 6, borderRadius: 5, border: "1px solid #d1d5db", fontSize: 12 }}>
+                        <option>Years</option>
+                        <option>Months</option>
+                        <option>Weeks</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 10, color: "#6b7280", display: "block", marginBottom: 2 }}>Period Count</label>
+                      <input type="number" placeholder="Count" value={levelForm.period_count} onChange={e => setLevelForm({ ...levelForm, period_count: e.target.value })} style={{ width: "100%", padding: 6, borderRadius: 5, border: "1px solid #d1d5db", fontSize: 12, boxSizing: "border-box" }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 10, color: "#6b7280", display: "block", marginBottom: 2 }}>Modules</label>
+                      <input type="number" placeholder="Modules" value={levelForm.default_modules_count} onChange={e => setLevelForm({ ...levelForm, default_modules_count: e.target.value })} style={{ width: "100%", padding: 6, borderRadius: 5, border: "1px solid #d1d5db", fontSize: 12, boxSizing: "border-box" }} />
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
+                    <button onClick={handleLevelSave} style={{ background: BRAND, color: "#fff", border: "none", borderRadius: 5, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>Save Level</button>
+                    <button onClick={() => setShowLevelForm(false)} style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 5, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {(selectedCert.levels || []).map(lvl => (
+                  <div key={lvl.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f9fafb", borderRadius: 8, border: "0.5px solid #f3f4f6" }}>
+                    <div>
+                      <div style={{ fontWeight: 500, fontSize: 13 }}>{lvl.name}</div>
+                      <div style={{ fontSize: 11, color: "#6b7280" }}>Period: {lvl.period_count} {lvl.duration_type} · Modules: {lvl.default_modules_count}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => { 
+                        setEditingLevel(lvl); 
+                        setLevelForm({
+                          name: lvl.name || "",
+                          duration_type: lvl.duration_type || "Months",
+                          period_count: lvl.period_count || "",
+                          default_modules_count: lvl.default_modules_count || ""
+                        }); 
+                        setShowLevelForm(true); 
+                      }} style={{ fontSize: 10, color: BRAND, border: "none", background: "none", cursor: "pointer" }}>Edit</button>
+                      <button onClick={() => deleteLevel(lvl.id)} style={{ fontSize: 10, color: "#dc2626", border: "none", background: "none", cursor: "pointer" }}>Delete</button>
+                    </div>
+                  </div>
+                ))}
+                {(selectedCert.levels || []).length === 0 && <div style={{ textAlign: "center", color: "#9ca3af", padding: 20, fontSize: 12 }}>No levels defined for this authority yet.</div>}
+              </div>
+            </>
+          ) : (
+            <div style={{ textAlign: "center", color: "#9ca3af", padding: 40, border: "1px dashed #e5e7eb", borderRadius: 10 }}>
+              <div style={{ fontSize: 24, marginBottom: 10 }}>📜</div>
+              Select a certification authority from the list to manage its specific levels, modules and study periods.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── MAIN APPLICATION RUNTIME SHELL ───────────────────────────────────────────
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [token, setToken] = useState(localStorage.getItem("auth_token") || "");
-  const [showLogin, setShowLogin] = useState(false);
   const [userType, setUserType] = useState(
     localStorage.getItem("user_type") || "staff",
   );
+
+  const requestHeaders = useMemo(() => ({
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+  }), [token]);
+
   const [loginType, setLoginType] = useState("student");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
 
-  const [page, setPage] = useState("dashboard");
   const [dbData, setDbData] = useState({
     departments: [],
     courses: [],
     students: [],
     clubs: [],
     staff: [],
+    certifications: [],
+    certificationLevels: [],
     user: null,
   });
   const [loading, setLoading] = useState(!!token);
-
-  const requestHeaders = {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  };
 
   // Ultra-safe array finder extraction function
   const unpack = (res) => {
@@ -1730,55 +1811,65 @@ export default function App() {
     return [];
   };
 
-  const fetchCompleteBackendState = () => {
+  const fetchCompleteBackendState = useCallback(async () => {
     if (!token) return;
     setLoading(true);
+    console.log("🔄 Synchronizing full system state from ledger layers...");
 
-    Promise.all([
-      fetch("/api/me", { headers: requestHeaders })
-        .then((res) => res.json())
-        .catch(() => null),
-      fetch("/api/departments", { headers: requestHeaders })
-        .then((res) => res.json())
-        .catch(() => []),
-      fetch("/api/courses", { headers: requestHeaders })
-        .then((res) => res.json())
-        .catch(() => []),
-      fetch("/api/students", { headers: requestHeaders })
-        .then((res) => res.json())
-        .catch(() => []),
-      fetch("/api/clubs", { headers: requestHeaders })
-        .then((res) => res.json())
-        .catch(() => []),
-      fetch("/api/staff", { headers: requestHeaders })
-        .then((res) => res.json())
-        .catch(() => []),
-    ])
-      .then(([user, departments, courses, students, clubs, staff]) => {
-        setDbData({
-          user: user || {
-            name: "Authorized Officer",
-            email: "management@magotvtc.ac.ke",
-          },
-          departments: unpack(departments),
-          courses: unpack(courses),
-          students: unpack(students),
-          clubs: unpack(clubs),
-          staff: unpack(staff),
-        });
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Data pipeline catch error:", err);
-        setLoading(false);
+    try {
+      const [
+        userRes,
+        deptsRes,
+        coursesRes,
+        studentsRes,
+        clubsRes,
+        staffRes,
+        certsRes,
+        certLevelsRes,
+      ] = await Promise.all([
+        api.get("/me").catch(() => null),
+        api.get("/departments").catch(() => ({ data: [] })),
+        api.get("/courses").catch(() => ({ data: [] })),
+        api.get("/students").catch(() => ({ data: [] })),
+        api.get("/clubs").catch(() => ({ data: [] })),
+        api.get("/staff").catch(() => ({ data: [] })),
+        api.get("/certifications").catch(() => ({ data: [] })),
+        api.get("/certification-levels").catch(() => ({ data: [] })),
+      ]);
+
+      const newState = {
+        user: (userRes?.data?.data || userRes?.data) || {
+          name: "Authorized Officer",
+          email: "management@magotvtc.ac.ke",
+        },
+        departments: unpack(deptsRes?.data),
+        courses: unpack(coursesRes?.data),
+        students: unpack(studentsRes?.data),
+        clubs: unpack(clubsRes?.data),
+        staff: unpack(staffRes?.data),
+        certifications: unpack(certsRes?.data),
+        certificationLevels: unpack(certLevelsRes?.data),
+      };
+
+      console.log("✅ State sync complete:", {
+        courses: newState.courses.length,
+        students: newState.students.length,
+        departments: newState.departments.length,
       });
-  };
+
+      setDbData(newState);
+    } catch (error) {
+      console.error("❌ Data pipeline failure:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
 
   useEffect(() => {
     if (token) {
-      fetchCompleteBackendState();
+      queueMicrotask(fetchCompleteBackendState);
     }
-  }, [token]);
+  }, [fetchCompleteBackendState, token]);
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
@@ -1810,6 +1901,11 @@ export default function App() {
           localStorage.setItem("user_type", loginType);
           setUserType(loginType);
           setToken(activeToken);
+          if (loginType === "student") {
+            navigate("/student");
+          } else {
+            navigate("/dashboard");
+          }
         } else {
           throw new Error("No authentication token payload found.");
         }
@@ -1839,275 +1935,71 @@ export default function App() {
   };
 
   // Render view router helper
-  const renderPageContent = () => {
-    switch (page) {
-      case "dashboard":
-        return <Dashboard dbData={dbData} />;
-      case "departments":
-        return (
-          <Departments
-            dbData={dbData}
-            onRefresh={fetchCompleteBackendState}
-            headers={requestHeaders}
-          />
-        );
-      case "courses":
-        return (
-          <Courses
-            dbData={dbData}
-            onRefresh={fetchCompleteBackendState}
-            headers={requestHeaders}
-          />
-        );
-      case "students":
-        return (
-          <Students
-            dbData={dbData}
-            onRefresh={fetchCompleteBackendState}
-            headers={requestHeaders}
-          />
-        );
-      case "career":
-        return <CareerGuidance />;
-      case "counselling":
-        return <Counselling />;
-      case "clubs":
-        return <Clubs dbData={dbData} />;
-      case "staff":
-        return (
-          <Staff
-            dbData={dbData}
-            onRefresh={fetchCompleteBackendState}
-            headers={requestHeaders}
-          />
-        );
-      case "analytics":
-        return <Analytics />;
-      default:
-        return <Dashboard dbData={dbData} />;
-    }
-  };
-
-  if (!token) {
-    if (!showLogin) {
-      return <Landing onPortalLogin={() => setShowLogin(true)} />;
-    }
-
+  const renderRoutes = () => {
     return (
-      <div
-        style={{
-          display: "flex",
-          height: "100vh",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#f3f4f6",
-          fontFamily: "sans-serif",
-        }}
-      >
-        <button
-          onClick={() => setShowLogin(false)}
-          style={{
-            marginBottom: 20,
-            background: "none",
-            border: "none",
-            color: BRAND,
-            fontWeight: 700,
-            cursor: "pointer",
-            fontSize: 14,
-          }}
-        >
-          ← Back to Landing Page
-        </button>
-        <form
-          onSubmit={handleLoginSubmit}
-          style={{
-            background: "#fff",
-            padding: 32,
-            borderRadius: 12,
-            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
-            width: 340,
-          }}
-        >
-          <div
-            style={{
-              color: BRAND,
-              fontWeight: 700,
-              fontSize: 16,
-              marginBottom: 4,
-              letterSpacing: 0.5,
-            }}
-          >
-            MAGO TVTC
-          </div>
-          <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 20 }}>
-            {loginType === "staff"
-              ? "Staff Information System Access"
-              : "Student Portal Access"}
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              marginBottom: 20,
-              background: "#f3f4f6",
-              padding: 4,
-              borderRadius: 12,
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                setLoginType("staff");
-                setIdentifier("");
-                setPassword("");
-                setLoginError("");
-              }}
-              style={{
-                flex: 1,
-                padding: 10,
-                borderRadius: 10,
-                border:
-                  loginType === "staff"
-                    ? `1px solid ${BRAND}`
-                    : "1px solid transparent",
-                background: loginType === "staff" ? "#ffffff" : "transparent",
-                color: loginType === "staff" ? BRAND : "#6b7280",
-                cursor: "pointer",
-                fontWeight: 700,
-              }}
-            >
-              Staff
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setLoginType("student");
-                setIdentifier("");
-                setPassword("");
-                setLoginError("");
-              }}
-              style={{
-                flex: 1,
-                padding: 10,
-                borderRadius: 10,
-                border:
-                  loginType === "student"
-                    ? `1px solid ${BRAND}`
-                    : "1px solid transparent",
-                background: loginType === "student" ? "#ffffff" : "transparent",
-                color: loginType === "student" ? BRAND : "#6b7280",
-                cursor: "pointer",
-                fontWeight: 700,
-              }}
-            >
-              Student
-            </button>
-          </div>
-
-          {loginError && (
-            <div
-              style={{
-                background: "#fee2e2",
-                color: "#dc2626",
-                padding: "8px 12px",
-                borderRadius: 6,
-                fontSize: 12,
-                marginBottom: 14,
-              }}
-            >
-              {loginError}
-            </div>
-          )}
-
-          <div style={{ marginBottom: 12 }}>
-            <label
-              style={{
-                fontSize: 12,
-                color: "#374151",
-                display: "block",
-                marginBottom: 4,
-              }}
-            >
-              {loginType === "staff" ? "Staff Email" : "Admission Number"}
-            </label>
-            <input
-              type={loginType === "staff" ? "email" : "text"}
-              required
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              placeholder={loginType === "staff" ? "name@mago.test" : "MG..."}
-              style={{
-                width: "100%",
-                padding: 8,
-                border: "1px solid #d1d5db",
-                borderRadius: 6,
-                boxSizing: "border-box",
-              }}
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<Dashboard dbData={dbData} />} />
+        <Route
+          path="/departments"
+          element={
+            <Departments
+              dbData={dbData}
+              onRefresh={fetchCompleteBackendState}
+              headers={requestHeaders}
             />
-          </div>
-          <div style={{ marginBottom: 20 }}>
-            <label
-              style={{
-                fontSize: 12,
-                color: "#374151",
-                display: "block",
-                marginBottom: 4,
-              }}
-            >
-              Security Password
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={{
-                width: "100%",
-                padding: 8,
-                border: "1px solid #d1d5db",
-                borderRadius: 6,
-                boxSizing: "border-box",
-              }}
+          }
+        />
+        <Route
+          path="/courses"
+          element={
+            <Courses
+              dbData={dbData}
+              onRefresh={fetchCompleteBackendState}
+              headers={requestHeaders}
             />
-            {loginType === "student" && (
-              <div
-                style={{
-                  marginTop: 8,
-                  fontSize: 11,
-                  color: "#4b5563",
-                  lineHeight: 1.4,
-                }}
-              >
-                Use your admission number and the default password{" "}
-                <strong>password</strong>.
-              </div>
-            )}
-          </div>
-          <button
-            type="submit"
-            style={{
-              width: "100%",
-              background: BRAND,
-              color: "#fff",
-              border: "none",
-              padding: 10,
-              borderRadius: 6,
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            Authenticate Session
-          </button>
-        </form>
-      </div>
+          }
+        />
+        <Route
+          path="/students"
+          element={
+            <Students
+              dbData={dbData}
+              onRefresh={fetchCompleteBackendState}
+              headers={requestHeaders}
+            />
+          }
+        />
+        <Route path="/career" element={<CareerGuidance />} />
+        <Route path="/counselling" element={<Counselling />} />
+        <Route path="/clubs" element={<Clubs dbData={dbData} />} />
+        <Route
+          path="/certifications"
+          element={
+            <Certifications
+              dbData={dbData}
+              onRefresh={fetchCompleteBackendState}
+              headers={requestHeaders}
+            />
+          }
+        />
+        <Route
+          path="/staff"
+          element={
+            <Staff
+              dbData={dbData}
+              onRefresh={fetchCompleteBackendState}
+              headers={requestHeaders}
+            />
+          }
+        />
+        <Route path="/analytics" element={<Analytics />} />
+        <Route path="/interventions" element={<Interventions />} />
+        <Route path="/job-placements" element={<JobPlacement />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
     );
-  }
-
-  if (token && userType === "student") {
-    return <StudentDashboard user={dbData.user} onLogout={handleLogout} />;
-  }
+  };
 
   if (loading) {
     return (
@@ -2127,130 +2019,387 @@ export default function App() {
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        fontFamily: "'Segoe UI', system-ui, sans-serif",
-        background: "#f9fafb",
-      }}
-    >
-      {/* Navigation Sidebar */}
-      <div
-        style={{
-          width: 220,
-          background: "#fff",
-          borderRight: "0.5px solid #e5e7eb",
-          display: "flex",
-          flexDirection: "column",
-          flexShrink: 0,
-        }}
-      >
-        <div
-          style={{ padding: "20px 16px", borderBottom: "0.5px solid #f3f4f6" }}
-        >
-          <div
-            style={{
-              color: BRAND,
-              fontWeight: 700,
-              fontSize: 15,
-              letterSpacing: 0.5,
-            }}
-          >
-            MAGO TVTC
-          </div>
-          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
-            Management Portal
-          </div>
-        </div>
-
-        <div style={{ padding: 10, flex: 1 }}>
-          {NAV_ITEMS.map((item) => {
-            const isActive = page === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setPage(item.id)}
+    <Routes>
+      <Route
+        path="/"
+        element={
+          !token ? (
+            <Landing
+              onPortalLogin={() => {
+                navigate("/login");
+              }}
+            />
+          ) : userType === "student" ? (
+            <Navigate to="/student" replace />
+          ) : (
+            <Navigate to="/dashboard" replace />
+          )
+        }
+      />
+      <Route
+        path="/student"
+        element={
+          token && userType === "student" ? (
+            <StudentDashboard user={dbData.user} onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        }
+      />
+      <Route
+        path="*"
+        element={
+          token && userType === "staff" ? (
+            <div
+              style={{
+                display: "flex",
+                minHeight: "100vh",
+                fontFamily: "'Segoe UI', system-ui, sans-serif",
+                background: "#f9fafb",
+              }}
+            >
+              {/* Navigation Sidebar */}
+              <div
                 style={{
+                  width: 220,
+                  background: "#fff",
+                  borderRight: "0.5px solid #e5e7eb",
                   display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  width: "100%",
-                  border: "none",
-                  background: isActive ? BRAND_LIGHT : "transparent",
-                  color: isActive ? BRAND : "#4b5563",
-                  padding: "9px 12px",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  fontSize: 13,
-                  fontWeight: isActive ? 600 : 500,
-                  textAlign: "left",
-                  marginBottom: 4,
-                  transition: "all 0.15s",
+                  flexDirection: "column",
+                  flexShrink: 0,
                 }}
               >
-                <span style={{ fontSize: 15 }}>{item.icon}</span>
-                {item.label}
+                <div
+                  style={{
+                    padding: "20px 16px",
+                    borderBottom: "0.5px solid #f3f4f6",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: BRAND,
+                      fontWeight: 700,
+                      fontSize: 15,
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    MAGO TVTC
+                  </div>
+                  <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
+                    Management Portal
+                  </div>
+                </div>
+
+                <div style={{ padding: 10, flex: 1 }}>
+                  {NAV_ITEMS.map((item) => {
+                    const isActive = location.pathname === item.path;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => navigate(item.path)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          width: "100%",
+                          border: "none",
+                          background: isActive ? BRAND_LIGHT : "transparent",
+                          color: isActive ? BRAND : "#4b5563",
+                          padding: "9px 12px",
+                          borderRadius: 8,
+                          cursor: "pointer",
+                          fontSize: 13,
+                          fontWeight: isActive ? 600 : 500,
+                          textAlign: "left",
+                          marginBottom: 4,
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        <span style={{ fontSize: 15 }}>{item.icon}</span>
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* User Account / Sign Out Section */}
+                <div
+                  style={{
+                    padding: 14,
+                    borderTop: "0.5px solid #e5e7eb",
+                    background: "#f9fafb",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#374151",
+                      textOverflow: "ellipsis",
+                      overflow: "hidden",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {dbData.user?.name || "Officer Account"}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      color: "#6b7280",
+                      marginBottom: 10,
+                      textOverflow: "ellipsis",
+                      overflow: "hidden",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {dbData.user?.email}
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    style={{
+                      width: "100%",
+                      background: "#fee2e2",
+                      color: "#dc2626",
+                      border: "none",
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Sign Out Session
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Frame Page Container */}
+              <div style={{ flex: 1, padding: 24, overflowY: "auto" }}>
+                {renderRoutes()}
+              </div>
+            </div>
+          ) : !token ? (
+            <div
+              style={{
+                display: "flex",
+                height: "100vh",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "#f3f4f6",
+                fontFamily: "sans-serif",
+              }}
+            >
+              <button
+                onClick={() => {
+                  navigate("/");
+                }}
+                style={{
+                  marginBottom: 20,
+                  background: "none",
+                  border: "none",
+                  color: BRAND,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontSize: 14,
+                }}
+              >
+                ← Back to Landing Page
               </button>
-            );
-          })}
-        </div>
+              <form
+                onSubmit={handleLoginSubmit}
+                style={{
+                  background: "#fff",
+                  padding: 32,
+                  borderRadius: 12,
+                  boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
+                  width: 340,
+                }}
+              >
+                <div
+                  style={{
+                    color: BRAND,
+                    fontWeight: 700,
+                    fontSize: 16,
+                    marginBottom: 4,
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  MAGO TVTC
+                </div>
+                <div
+                  style={{ fontSize: 12, color: "#6b7280", marginBottom: 20 }}
+                >
+                  {loginType === "staff"
+                    ? "Staff Information System Access"
+                    : "Student Portal Access"}
+                </div>
 
-        {/* User Account / Sign Out Section */}
-        <div
-          style={{
-            padding: 14,
-            borderTop: "0.5px solid #e5e7eb",
-            background: "#f9fafb",
-          }}
-        >
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: "#374151",
-              textOverflow: "ellipsis",
-              overflow: "hidden",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {dbData.user?.name || "Officer Account"}
-          </div>
-          <div
-            style={{
-              fontSize: 10,
-              color: "#6b7280",
-              marginBottom: 10,
-              textOverflow: "ellipsis",
-              overflow: "hidden",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {dbData.user?.email}
-          </div>
-          <button
-            onClick={handleLogout}
-            style={{
-              width: "100%",
-              background: "#fee2e2",
-              color: "#dc2626",
-              border: "none",
-              padding: "6px 10px",
-              borderRadius: 6,
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: "pointer",
-            }}
-          >
-            Sign Out Session
-          </button>
-        </div>
-      </div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    marginBottom: 20,
+                    background: "#f3f4f6",
+                    padding: 4,
+                    borderRadius: 12,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginType("staff");
+                      setIdentifier("");
+                      setPassword("");
+                      setLoginError("");
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: 10,
+                      borderRadius: 10,
+                      border:
+                        loginType === "staff"
+                          ? `1px solid ${BRAND}`
+                          : "1px solid transparent",
+                      background:
+                        loginType === "staff" ? "#ffffff" : "transparent",
+                      color: loginType === "staff" ? BRAND : "#6b7280",
+                      cursor: "pointer",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Staff
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginType("student");
+                      setIdentifier("");
+                      setPassword("");
+                      setLoginError("");
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: 10,
+                      borderRadius: 10,
+                      border:
+                        loginType === "student"
+                          ? `1px solid ${BRAND}`
+                          : "1px solid transparent",
+                      background:
+                        loginType === "student" ? "#ffffff" : "transparent",
+                      color: loginType === "student" ? BRAND : "#6b7280",
+                      cursor: "pointer",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Student
+                  </button>
+                </div>
 
-      {/* Main Frame Page Container */}
-      <div style={{ flex: 1, padding: 24, overflowY: "auto" }}>
-        {renderPageContent()}
-      </div>
-    </div>
+                {loginError && (
+                  <div
+                    style={{
+                      background: "#fee2e2",
+                      color: "#dc2626",
+                      padding: "8px 12px",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      marginBottom: 14,
+                    }}
+                  >
+                    {loginError}
+                  </div>
+                )}
+
+                <div style={{ marginBottom: 12 }}>
+                  <label
+                    style={{
+                      fontSize: 12,
+                      color: "#374151",
+                      display: "block",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {loginType === "staff" ? "Staff Email" : "Admission Number"}
+                  </label>
+                  <input
+                    type={loginType === "staff" ? "email" : "text"}
+                    required
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    placeholder={
+                      loginType === "staff" ? "name@mago.test" : "MG..."
+                    }
+                    style={{
+                      width: "100%",
+                      padding: 8,
+                      border: "1px solid #d1d5db",
+                      borderRadius: 6,
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+                <div style={{ marginBottom: 20 }}>
+                  <label
+                    style={{
+                      fontSize: 12,
+                      color: "#374151",
+                      display: "block",
+                      marginBottom: 4,
+                    }}
+                  >
+                    Security Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: 8,
+                      border: "1px solid #d1d5db",
+                      borderRadius: 6,
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  {loginType === "student" && (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        fontSize: 11,
+                        color: "#4b5563",
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      Use your admission number and the default password{" "}
+                      <strong>password</strong>.
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  style={{
+                    width: "100%",
+                    background: BRAND,
+                    color: "#fff",
+                    border: "none",
+                    padding: 10,
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    fontWeight: 600,
+                  }}
+                >
+                  Authenticate Session
+                </button>
+              </form>
+            </div>
+          ) : (
+            <Navigate to="/" replace />
+          )
+        }
+      />
+    </Routes>
   );
 }

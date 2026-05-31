@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import SurveyModal from "../components/public/SurveyModal";
 import CounsellingModal from "../components/public/CounsellingModal";
 import api from "../api";
@@ -15,6 +15,26 @@ export default function Landing({ onPortalLogin }) {
   // Dropdown states
   const [careerDropdownOpen, setCareerDropdownOpen] = useState(false);
   const [counselingDropdownOpen, setCounselingDropdownOpen] = useState(false);
+
+  // Refs for closing dropdowns on outside click
+  const careerRef = useRef(null);
+  const counselingRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (careerRef.current && !careerRef.current.contains(event.target)) {
+        setCareerDropdownOpen(false);
+      }
+      if (
+        counselingRef.current &&
+        !counselingRef.current.contains(event.target)
+      ) {
+        setCounselingDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleExplorePrograms = async () => {
     if (showVirtualTour) setShowVirtualTour(false);
@@ -39,146 +59,193 @@ export default function Landing({ onPortalLogin }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#fcfdfe] text-gray-900 selection:bg-[#0a6e4e]/10 selection:text-[#0a6e4e] font-sans antialiased">
-      {/* High-Contrast Premium Styled Navigation Bar */}
-      <nav className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md z-50 border-b border-gray-200/80 shadow-sm transition-all">
-        <div className="max-w-7xl mx-auto px-6 h-24 flex justify-between items-center w-full">
-          {/* Main Elevated Brand Title Identity Segment */}
-          <div className="flex items-center gap-4 flex-shrink-0 group cursor-default">
-            <div className="w-13 h-13 bg-[#0a6e4e] rounded-xl flex items-center justify-center text-white text-2xl font-black italic shadow-lg shadow-[#0a6e4e]/20 group-hover:rotate-6 transition-transform duration-300">
+    <div className="min-h-screen bg-slate-50/50 text-slate-900 font-sans antialiased selection:bg-emerald-600/10 selection:text-emerald-700 relative overflow-x-hidden">
+      {/* Decorative Aurora Background Mesh */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[700px] bg-[radial-gradient(100%_60%_at_top_center,rgba(16,185,129,0.06)_0%,rgba(248,250,252,0)_100%)] pointer-events-none z-0" />
+
+      {/* Global Navigation Engine */}
+      <nav className="fixed top-0 left-0 right-0 bg-white/75 backdrop-blur-xl z-50 border-b border-slate-200/80 transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex justify-between items-center w-full">
+          {/* Brand Identity */}
+          <div className="flex items-center gap-3.5 flex-shrink-0 group cursor-pointer">
+            <div className="w-11 h-11 bg-gradient-to-br from-emerald-600 to-teal-800 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-md shadow-emerald-900/10 group-hover:scale-105 transition-all duration-300">
               M
             </div>
             <div>
-              <div className="text-xl md:text-2xl font-black text-gray-900 tracking-tighter uppercase leading-none bg-gradient-to-r from-gray-900 via-gray-800 to-[#0a6e4e] bg-clip-text text-transparent">
+              <div className="text-lg font-black text-slate-900 tracking-tight leading-none bg-gradient-to-r from-slate-900 to-emerald-700 bg-clip-text text-transparent">
                 Mago TVTC
               </div>
-              <div className="text-[10px] font-black text-[#0a6e4e] uppercase tracking-[0.25em] mt-1 block">
+              <div className="text-[9px] font-bold text-emerald-600 uppercase tracking-[0.2em] mt-1.5 block">
                 Technical Excellence Center
               </div>
             </div>
           </div>
 
-          {/* Desktop Navigation Links */}
-          <div className="hidden lg:flex items-center gap-4 relative">
-            {/* Career Guidance Dropdown Selector Component */}
-            <div className="relative">
+          {/* Desktop Links Tree */}
+          <div className="hidden lg:flex items-center gap-2">
+            {/* Career Selector Dropdown */}
+            <div className="relative" ref={careerRef}>
               <button
                 onClick={() => {
                   setCareerDropdownOpen(!careerDropdownOpen);
                   setCounselingDropdownOpen(false);
                 }}
-                className={`h-11 px-4 rounded-xl font-extrabold text-xs uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95 ${
+                className={`h-10 px-4 rounded-xl font-semibold text-xs tracking-wide flex items-center gap-2 transition-all ${
                   careerDropdownOpen
-                    ? "bg-[#0a6e4e] text-white shadow-md"
-                    : "bg-[#0a6e4e]/10 text-[#0a6e4e] hover:bg-[#0a6e4e]/20"
+                    ? "bg-slate-900 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
                 Career Guidance
-                <span
-                  className={`text-[9px] transform transition-transform duration-200 ${careerDropdownOpen ? "rotate-180" : "rotate-0"}`}
+                <svg
+                  className={`w-3.5 h-3.5 transform transition-transform duration-200 ${careerDropdownOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  ▼
-                </span>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2.5"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
               </button>
 
               {careerDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-2xl py-2 z-50 transition-all">
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 z-50">
                   <button
                     onClick={() => {
                       setSurveyOpen(true);
                       setCareerDropdownOpen(false);
                     }}
-                    className="w-full text-left px-5 py-3 text-xs font-bold text-gray-700 hover:bg-gray-50 hover:text-[#0a6e4e] flex items-center gap-2 transition-colors"
+                    className="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-600 flex items-center gap-2.5 transition-colors"
                   >
-                    <span>📝</span> Satisfaction Survey
+                    <svg
+                      className="w-4 h-4 text-slate-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                      />
+                    </svg>
+                    Satisfaction Survey
                   </button>
                 </div>
               )}
             </div>
 
-            {/* Counseling / Guidance Dropdown Selector Component */}
-            <div className="relative">
+            {/* Counseling Selector Dropdown */}
+            <div className="relative" ref={counselingRef}>
               <button
                 onClick={() => {
                   setCounselingDropdownOpen(!counselingDropdownOpen);
                   setCareerDropdownOpen(false);
                 }}
-                className={`h-11 px-4 rounded-xl font-extrabold text-xs uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95 ${
+                className={`h-10 px-4 rounded-xl font-semibold text-xs tracking-wide flex items-center gap-2 transition-all ${
                   counselingDropdownOpen
-                    ? "bg-blue-600 text-white shadow-md"
-                    : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
-                Counseling
-                <span
-                  className={`text-[9px] transform transition-transform duration-200 ${counselingDropdownOpen ? "rotate-180" : "rotate-0"}`}
+                Counseling Hub
+                <svg
+                  className={`w-3.5 h-3.5 transform transition-transform duration-200 ${counselingDropdownOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  ▼
-                </span>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2.5"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
               </button>
 
               {counselingDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-2xl py-2 z-50 transition-all">
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 z-50">
                   <button
                     onClick={() => {
                       setCounsellingOpen(true);
                       setCounselingDropdownOpen(false);
                     }}
-                    className="w-full text-left px-5 py-3 text-xs font-bold text-gray-700 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-2 transition-colors"
+                    className="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors"
                   >
-                    <span>🕊️</span> Request Counseling
+                    <svg
+                      className="w-4 h-4 text-slate-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                      />
+                    </svg>
+                    Request Counseling
                   </button>
                 </div>
               )}
             </div>
 
-            <div className="h-6 w-[1px] bg-gray-200 mx-1"></div>
+            <div className="h-4 w-[1px] bg-slate-200 mx-2" />
 
-            {/* Base Portal Authentication Trigger */}
             <button
               onClick={onPortalLogin}
-              className="h-11 px-6 bg-[#0a6e4e] text-white rounded-xl font-extrabold text-xs uppercase tracking-widest hover:bg-[#07533b] hover:scale-[1.02] transition-all shadow-md shadow-[#0a6e4e]/20 active:scale-95"
+              className="h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-xs tracking-wide transition-all shadow-sm shadow-emerald-600/10 active:scale-[0.98]"
             >
-              Student Portal Login
+              Login Portal
             </button>
           </div>
 
-          {/* Mobile Hamburguer Toggle Button */}
+          {/* Mobile Hamburger Drawer Mechanism */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 text-gray-700 focus:outline-none"
+            className="lg:hidden p-2 text-slate-600 hover:text-slate-900 focus:outline-none transition-colors"
           >
-            <span className="text-2xl">{mobileMenuOpen ? "✕" : "☰"}</span>
+            <span className="text-xl font-medium">
+              {mobileMenuOpen ? "✕" : "☰"}
+            </span>
           </button>
         </div>
 
-        {/* Mobile Dropdown Panel Menu */}
+        {/* Adaptive Slideway Mobile Drawer Panel */}
         {mobileMenuOpen && (
-          <div className="lg:hidden w-full border-t border-gray-100 bg-white px-6 py-4 flex flex-col gap-3 shadow-inner">
+          <div className="lg:hidden w-full border-t border-slate-200 bg-white px-4 py-4 flex flex-col gap-2 shadow-xl">
             <button
               onClick={() => {
                 setSurveyOpen(true);
                 setMobileMenuOpen(false);
               }}
-              className="w-full py-3 px-4 bg-gray-50 rounded-xl text-left font-bold text-sm text-gray-700 hover:bg-gray-100"
+              className="w-full py-3 px-4 bg-slate-50 hover:bg-slate-100 rounded-xl text-left font-medium text-sm text-slate-700 transition-colors"
             >
-              📝 Take Satisfaction Survey
+              Take Satisfaction Survey
             </button>
             <button
               onClick={() => {
                 setCounsellingOpen(true);
                 setMobileMenuOpen(false);
               }}
-              className="w-full py-3 px-4 bg-gray-50 rounded-xl text-left font-bold text-sm text-gray-700 hover:bg-gray-100"
+              className="w-full py-3 px-4 bg-slate-50 hover:bg-slate-100 rounded-xl text-left font-medium text-sm text-slate-700 transition-colors"
             >
-              🕊️ Book Counseling Session
+              Book Counseling Session
             </button>
+            <div className="h-[1px] bg-slate-200 my-1" />
             <button
               onClick={() => {
                 onPortalLogin();
                 setMobileMenuOpen(false);
               }}
-              className="w-full py-3.5 px-4 bg-[#0a6e4e] text-white rounded-xl font-bold text-sm text-center tracking-wider shadow-sm"
+              className="w-full py-3 px-4 bg-emerald-600 text-white rounded-xl font-semibold text-sm text-center shadow-sm"
             >
               Secure Student Login
             </button>
@@ -186,48 +253,47 @@ export default function Landing({ onPortalLogin }) {
         )}
       </nav>
 
-      {/* Proportional Hero Section Layout Framework */}
-      <header className="pt-36 lg:pt-44 pb-16 px-6 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-          {/* Main Description Column Block */}
-          <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl text-[#0a6e4e] text-xs font-black uppercase tracking-widest shadow-sm">
-              <span className="w-2 h-2 bg-[#0a6e4e] rounded-full animate-ping"></span>
+      {/* Proportional Hero Pipeline Layout Framework */}
+      <header className="pt-32 lg:pt-40 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+          <div className="lg:col-span-7 space-y-7 text-center lg:text-left">
+            <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 bg-emerald-50 border border-emerald-100/80 rounded-full text-emerald-700 text-xs font-semibold tracking-wide shadow-sm">
+              <span className="w-1.5 h-1.5 bg-emerald-600 rounded-full animate-pulse" />
               Admissions Open 2026 / 2027
             </div>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-gray-900 tracking-tight leading-[1.05]">
-              Hands-On <br />
-              <span className="text-[#0a6e4e] relative inline-block">
-                Technical
-                <span className="absolute left-0 bottom-1 w-full h-[6px] bg-[#0a6e4e]/10 rounded-full"></span>
+
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
+              Hands-On <br className="hidden sm:inline" />
+              <span className="text-emerald-600 relative inline-block">
+                Technical Training
               </span>{" "}
               <br />
-              Training Systems.
+              Systems Blueprint.
             </h1>
-            <p className="text-base md:text-lg text-gray-600 font-medium max-w-xl mx-auto lg:mx-0 leading-relaxed">
+
+            <p className="text-slate-600 text-sm sm:text-base font-medium max-w-xl mx-auto lg:mx-0 leading-relaxed">
               Equipping forward-thinking professionals with certified expertise.
               Accelerate your career within industry-backed engineering
               installations and state-of-the-art labs.
             </p>
 
-            {/* Primary UI Call-To-Action Switches */}
-            <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-3.5 pt-2">
               <button
                 onClick={handleExplorePrograms}
-                className={`h-14 px-8 rounded-xl font-black uppercase text-xs tracking-widest transition-all shadow-md active:scale-95 ${
+                className={`h-12 px-6 rounded-xl font-semibold text-xs tracking-wider uppercase transition-all shadow-sm ${
                   showExplore
-                    ? "bg-gray-900 text-white shadow-gray-900/10"
-                    : "bg-[#0a6e4e] text-white shadow-[#0a6e4e]/20 hover:bg-[#075a40]"
+                    ? "bg-slate-900 text-white"
+                    : "bg-emerald-600 text-white hover:bg-emerald-700 hover:scale-[1.01]"
                 }`}
               >
                 {showExplore ? "✕ Hide Catalog" : "⚡ Explore Programs"}
               </button>
               <button
                 onClick={handleVirtualTour}
-                className={`h-14 px-8 border-2 rounded-xl font-black uppercase text-xs tracking-widest transition-all active:scale-95 ${
+                className={`h-12 px-6 border rounded-xl font-semibold text-xs tracking-wider uppercase transition-all ${
                   showVirtualTour
-                    ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
-                    : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50 shadow-sm"
+                    ? "bg-indigo-50 text-indigo-700 border-indigo-200 shadow-sm"
+                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm"
                 }`}
               >
                 {showVirtualTour ? "✕ Close Tour" : "🌐 Virtual Tour"}
@@ -235,27 +301,40 @@ export default function Landing({ onPortalLogin }) {
             </div>
           </div>
 
-          {/* Student Quick Access Launchpad Card Segment */}
-          <div className="lg:col-span-5 w-full">
-            <div className="bg-gradient-to-b from-gray-50 to-white p-6 md:p-8 rounded-3xl border border-gray-200/70 shadow-xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-bl-[60px]"></div>
-              <h3 className="text-lg font-black text-gray-900 tracking-tight mb-1">
-                Student Quick Operations
+          {/* Quick Hub Access Dashboard Display Element Layout */}
+          <div className="lg:col-span-5 w-full max-w-md mx-auto lg:max-w-none">
+            <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/60 shadow-xl shadow-slate-100/50 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-emerald-500/10 to-transparent rounded-bl-[60px]" />
+
+              <h3 className="text-base font-bold text-slate-900 tracking-tight mb-1">
+                Student Operations Hub
               </h3>
-              <p className="text-xs text-gray-500 mb-6">
-                Access secure portal modules immediately.
+              <p className="text-xs text-slate-400 mb-6">
+                Access your localized academic portal modules layout securely.
               </p>
 
               <div className="space-y-3">
                 <button
                   onClick={onPortalLogin}
-                  className="w-full h-14 bg-gray-900 hover:bg-black text-white rounded-xl flex items-center justify-between px-5 font-bold text-sm transition-all shadow-md group"
+                  className="w-full h-12 bg-slate-900 hover:bg-black text-white rounded-xl flex items-center justify-between px-4 font-semibold text-xs tracking-wide transition-all group"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">🔐</span>
-                    <span>Sign In to Student Portal</span>
+                  <div className="flex items-center gap-2.5">
+                    <svg
+                      className="w-4 h-4 text-slate-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                    <span>Student Login</span>
                   </div>
-                  <span className="transform group-hover:translate-x-1 transition-transform">
+                  <span className="transform group-hover:translate-x-0.5 transition-transform text-slate-400">
                     →
                   </span>
                 </button>
@@ -263,19 +342,43 @@ export default function Landing({ onPortalLogin }) {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setSurveyOpen(true)}
-                    className="h-24 bg-white border border-gray-200 hover:border-[#0a6e4e] hover:shadow-sm rounded-xl p-4 flex flex-col justify-between items-start text-left transition-all"
+                    className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200/40 rounded-xl p-4 flex flex-col justify-between items-start text-left h-24 transition-all"
                   >
-                    <span className="text-xl">📝</span>
-                    <span className="text-xs font-bold text-gray-800">
+                    <svg
+                      className="w-5 h-5 text-emerald-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <span className="text-xs font-semibold text-slate-700">
                       Course Survey
                     </span>
                   </button>
                   <button
                     onClick={() => setCounsellingOpen(true)}
-                    className="h-24 bg-white border border-gray-200 hover:border-blue-500 hover:shadow-sm rounded-xl p-4 flex flex-col justify-between items-start text-left transition-all"
+                    className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200/40 rounded-xl p-4 flex flex-col justify-between items-start text-left h-24 transition-all"
                   >
-                    <span className="text-xl">🕊️</span>
-                    <span className="text-xs font-bold text-gray-800">
+                    <svg
+                      className="w-5 h-5 text-indigo-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <span className="text-xs font-semibold text-slate-700">
                       Counseling Hub
                     </span>
                   </button>
@@ -286,25 +389,31 @@ export default function Landing({ onPortalLogin }) {
         </div>
       </header>
 
-      {/* Institutional Metrics Stats Bar */}
-      <section className="bg-gradient-to-r from-gray-900 to-neutral-900 text-white py-12 px-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-8 text-center divide-y sm:divide-y-0 sm:divide-x divide-white/10">
-          <div className="pt-4 sm:pt-0">
-            <div className="text-4xl font-black text-emerald-400">70%</div>
-            <div className="text-xs font-bold uppercase tracking-widest text-gray-400 mt-2">
-              Practical-First Training Matrix
+      {/* Core Metrics Summary Component Panel */}
+      <section className="bg-slate-900 text-white py-10 px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-4 text-center sm:divide-x divide-white/10">
+          <div className="space-y-1">
+            <div className="text-3xl font-extrabold text-emerald-400 tracking-tight">
+              70%
+            </div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              Practical Training Matrix
             </div>
           </div>
-          <div className="pt-6 sm:pt-0">
-            <div className="text-4xl font-black text-amber-400">100%</div>
-            <div className="text-xs font-bold uppercase tracking-widest text-gray-400 mt-2">
-              Industrial Attachment Placement
+          <div className="space-y-1">
+            <div className="text-3xl font-extrabold text-white tracking-tight">
+              100%
+            </div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              Attachment Placement
             </div>
           </div>
-          <div className="pt-6 sm:pt-0">
-            <div className="text-4xl font-black text-blue-400">15+</div>
-            <div className="text-xs font-bold uppercase tracking-widest text-gray-400 mt-2">
-              Certified Specialized Workshops
+          <div className="space-y-1">
+            <div className="text-3xl font-extrabold text-indigo-400 tracking-tight">
+              15+
+            </div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              Specialized Workshops
             </div>
           </div>
         </div>
@@ -312,56 +421,56 @@ export default function Landing({ onPortalLogin }) {
 
       {/* Dynamic Render Section: Operational Programs Catalog */}
       {showExplore && (
-        <section className="py-20 bg-gray-50 border-y border-gray-200/60 px-6">
+        <section className="py-16 bg-slate-50 border-b border-slate-200/60 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
-            <div className="mb-14 text-center max-w-xl mx-auto">
-              <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-3">
+            <div className="mb-10 text-center max-w-xl mx-auto">
+              <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight mb-2">
                 Accredited Academic Tracks
               </h2>
-              <p className="text-gray-500 font-medium text-sm">
+              <p className="text-slate-500 font-medium text-xs sm:text-sm">
                 Review verified technical departments registered under current
                 CDACC national curriculum structures.
               </p>
             </div>
 
             {loadingDepts ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {[1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className="h-64 bg-white border border-gray-200 rounded-2xl p-6 space-y-4 animate-pulse"
+                    className="h-60 bg-white border border-slate-200/60 rounded-xl p-6 space-y-4 animate-pulse"
                   >
-                    <div className="h-6 bg-gray-200 rounded-md w-2/3"></div>
-                    <div className="h-4 bg-gray-100 rounded-md w-1/2"></div>
-                    <div className="space-y-2 pt-4">
-                      <div className="h-3 bg-gray-100 rounded-md w-full"></div>
-                      <div className="h-3 bg-gray-100 rounded-md w-5/6"></div>
+                    <div className="h-4 bg-slate-200 rounded w-2/3" />
+                    <div className="h-3 bg-slate-100 rounded w-1/2" />
+                    <div className="space-y-2 pt-3">
+                      <div className="h-2 bg-slate-100 rounded w-full" />
+                      <div className="h-2 bg-slate-100 rounded w-5/6" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : departments.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {departments.map((dept) => (
                   <div
                     key={dept.id}
-                    className="bg-white border border-gray-100 rounded-2xl p-8 shadow-sm hover:shadow-lg transition-all relative overflow-hidden group border-t-4 border-t-[#0a6e4e]"
+                    className="bg-white border border-slate-200/50 rounded-xl p-6 shadow-sm hover:shadow-md transition-all border-t-2 border-t-emerald-600"
                   >
-                    <h3 className="text-lg font-black text-gray-900 mb-4 tracking-tight group-hover:text-[#0a6e4e] transition-colors">
+                    <h3 className="text-sm font-bold text-slate-900 mb-4 tracking-tight">
                       {dept.name}
                     </h3>
                     {dept.courses && dept.courses.length > 0 ? (
                       <div className="space-y-2">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                           Available Qualifications
                         </p>
                         <ul className="space-y-2">
                           {dept.courses.map((course, idx) => (
-                            <li key={idx} className="flex items-start gap-2">
-                              <span className="w-4 h-4 rounded-full bg-emerald-50 text-[#0a6e4e] flex items-center justify-center text-[10px] font-black flex-shrink-0 mt-0.5">
+                            <li key={idx} className="flex items-start gap-2.5">
+                              <span className="w-3.5 h-3.5 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center text-[9px] font-bold flex-shrink-0 mt-0.5">
                                 ✓
                               </span>
-                              <span className="text-xs text-gray-600 font-semibold">
+                              <span className="text-xs text-slate-600 font-medium">
                                 {course.name}
                               </span>
                             </li>
@@ -369,7 +478,7 @@ export default function Landing({ onPortalLogin }) {
                         </ul>
                       </div>
                     ) : (
-                      <p className="text-gray-400 text-xs italic">
+                      <p className="text-slate-400 text-xs italic">
                         No training profiles logged under this track.
                       </p>
                     )}
@@ -377,9 +486,21 @@ export default function Landing({ onPortalLogin }) {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 bg-white rounded-2xl border border-gray-200 max-w-sm mx-auto shadow-inner">
-                <span className="text-3xl mb-2 block">📁</span>
-                <p className="text-gray-500 font-bold text-xs">
+              <div className="text-center py-10 bg-white rounded-xl border border-slate-200/60 max-w-sm mx-auto">
+                <svg
+                  className="w-8 h-8 mx-auto text-slate-300 mb-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.5"
+                    d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5M5 19v-2a2 2 0 012-2h11a2 2 0 002-2V7a2 2 0 00-2-2h-1"
+                  />
+                </svg>
+                <p className="text-slate-500 font-semibold text-xs">
                   No live data links active in registrar records.
                 </p>
               </div>
@@ -388,56 +509,56 @@ export default function Landing({ onPortalLogin }) {
         </section>
       )}
 
-      {/* Dynamic Render Section: Interactive Campus Virtual Tour Panel */}
+      {/* Dynamic Render Section: Interactive Campus Virtual Tour Panel Layout Component */}
       {showVirtualTour && (
-        <section className="py-20 bg-neutral-950 text-white px-6 border-y border-black">
+        <section className="py-16 bg-slate-950 text-white px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
-            <div className="mb-14 text-center max-w-xl mx-auto">
-              <span className="px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest rounded-md">
-                Interactive Viewer
+            <div className="mb-10 text-center max-w-xl mx-auto">
+              <span className="px-2.5 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[9px] font-bold uppercase tracking-wider rounded">
+                Interactive Map Viewer
               </span>
-              <h2 className="text-3xl font-black tracking-tight mt-4 mb-3 text-white">
-                Mago Virtual Infrastructure Map
+              <h2 className="text-2xl font-extrabold tracking-tight mt-3 mb-2">
+                Virtual Infrastructure Map
               </h2>
-              <p className="text-gray-400 font-medium text-xs">
+              <p className="text-slate-400 font-medium text-xs sm:text-sm">
                 Explore state-of-the-art training environments built for
                 continuous workforce scaling.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 hover:border-emerald-500/30 transition-all cursor-pointer group">
-                <div className="aspect-video w-full bg-neutral-800 rounded-xl mb-4 overflow-hidden relative flex items-center justify-center text-2xl group-hover:scale-[1.02] transition-transform">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/[0.08] hover:border-emerald-500/30 transition-all cursor-pointer group">
+                <div className="aspect-video w-full bg-slate-900 rounded-lg mb-4 flex items-center justify-center border border-white/5 text-xl group-hover:scale-[1.01] transition-transform">
                   🔧
                 </div>
-                <h4 className="font-bold text-base mb-1 text-white group-hover:text-emerald-400 transition-colors">
+                <h4 className="font-bold text-sm mb-1 group-hover:text-emerald-400 transition-colors">
                   Mechanical Power Labs
                 </h4>
-                <p className="text-xs text-neutral-400 leading-relaxed">
+                <p className="text-xs text-slate-400 leading-relaxed font-medium">
                   Heavy production engine simulators, diagnostics
                   configurations, and equipment chains.
                 </p>
               </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 hover:border-blue-500/30 transition-all cursor-pointer group">
-                <div className="aspect-video w-full bg-neutral-800 rounded-xl mb-4 overflow-hidden relative flex items-center justify-center text-2xl group-hover:scale-[1.02] transition-transform">
+              <div className="bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/[0.08] hover:border-indigo-500/30 transition-all cursor-pointer group">
+                <div className="aspect-video w-full bg-slate-900 rounded-lg mb-4 flex items-center justify-center border border-white/5 text-xl group-hover:scale-[1.01] transition-transform">
                   💻
                 </div>
-                <h4 className="font-bold text-base mb-1 text-white group-hover:text-blue-400 transition-colors">
+                <h4 className="font-bold text-sm mb-1 group-hover:text-indigo-400 transition-colors">
                   Advanced Software Hubs
                 </h4>
-                <p className="text-xs text-neutral-400 leading-relaxed">
+                <p className="text-xs text-slate-400 leading-relaxed font-medium">
                   High-performance computing topologies, localized server
                   systems, and network diagnostic setups.
                 </p>
               </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 hover:border-amber-500/30 transition-all cursor-pointer group">
-                <div className="aspect-video w-full bg-neutral-800 rounded-xl mb-4 overflow-hidden relative flex items-center justify-center text-2xl group-hover:scale-[1.02] transition-transform">
+              <div className="bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/[0.08] hover:border-amber-500/30 transition-all cursor-pointer group">
+                <div className="aspect-video w-full bg-slate-900 rounded-lg mb-4 flex items-center justify-center border border-white/5 text-xl group-hover:scale-[1.01] transition-transform">
                   🍽️
                 </div>
-                <h4 className="font-bold text-base mb-1 text-white group-hover:text-amber-400 transition-colors">
+                <h4 className="font-bold text-sm mb-1 group-hover:text-amber-400 transition-colors">
                   Hospitality Operations Labs
                 </h4>
-                <p className="text-xs text-neutral-400 leading-relaxed">
+                <p className="text-xs text-slate-400 leading-relaxed font-medium">
                   Commercial industrial kitchen facilities, culinary setup
                   terminals, and logistics bays.
                 </p>
@@ -447,25 +568,25 @@ export default function Landing({ onPortalLogin }) {
         </section>
       )}
 
-      {/* Footer Component Wrapper */}
-      <footer className="py-12 border-t border-gray-200 bg-white text-center px-6">
-        <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.25em] mb-3">
+      {/* Global Bottom Information System Wrapper Block Component */}
+      <footer className="py-10 border-t border-slate-200 bg-white text-center px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3.5">
           © 2026 Mago Technical & Vocational Training College
         </div>
-        <div className="flex flex-wrap justify-center gap-6 text-xs font-bold text-gray-500">
-          <a href="#" className="hover:text-[#0a6e4e] transition-colors">
+        <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs font-semibold text-slate-500">
+          <a href="#" className="hover:text-emerald-600 transition-colors">
             Academic Framework
           </a>
-          <a href="#" className="hover:text-[#0a6e4e] transition-colors">
+          <a href="#" className="hover:text-emerald-600 transition-colors">
             Compliance Metrics
           </a>
-          <a href="#" className="hover:text-[#0a6e4e] transition-colors">
+          <a href="#" className="hover:text-emerald-600 transition-colors">
             Privacy Provisions
           </a>
         </div>
       </footer>
 
-      {/* Modals Container */}
+      {/* Global Functional State Modals Engine Container Component */}
       <SurveyModal isOpen={surveyOpen} onClose={() => setSurveyOpen(false)} />
       <CounsellingModal
         isOpen={counsellingOpen}
