@@ -139,23 +139,60 @@ export default function SurveyModal({
     );
   }, [form.dob]);
 
+  const isValidPhone = (value) => /^(?:07|01)\d{8}$/.test(value.trim());
+  const isValidNationalIdOrBirthCert = (value) =>
+    !value || /^\d{8}$/.test(value.trim());
+  const isAtLeastFifteenYearsOld = (dob) => {
+    if (!dob) return false;
+    const birthDate = new Date(dob);
+    if (isNaN(birthDate.getTime())) return false;
+    const today = new Date();
+    const threshold = new Date(
+      today.getFullYear() - 15,
+      today.getMonth(),
+      today.getDate(),
+    );
+    return birthDate <= threshold;
+  };
+
   const handleStep1Next = () => {
     if (
-      form.admission_number &&
-      form.full_name &&
-      form.phone &&
-      form.dob &&
-      form.age &&
-      form.location &&
-      form.home_address &&
-      form.department_id &&
-      form.course_id
+      !form.admission_number ||
+      !form.full_name ||
+      !form.phone ||
+      !form.dob ||
+      !form.age ||
+      !form.location ||
+      !form.home_address ||
+      !form.department_id ||
+      !form.course_id
     ) {
-      setStep(2);
-    } else {
       setError("Please complete all required fields in Step 1.");
       setTimeout(() => setError(""), 4000);
+      return;
     }
+
+    if (!isValidPhone(form.phone)) {
+      setError(
+        "Phone number must be 10 digits and start with 07 or 01 (e.g. 0700000000 or 0111111111).",
+      );
+      setTimeout(() => setError(""), 4000);
+      return;
+    }
+
+    if (!isValidNationalIdOrBirthCert(form.national_id_or_birth_cert)) {
+      setError("National ID / Birth Cert must be exactly 8 digits.");
+      setTimeout(() => setError(""), 4000);
+      return;
+    }
+
+    if (!isAtLeastFifteenYearsOld(form.dob)) {
+      setError("Date of birth must be at least 15 years ago.");
+      setTimeout(() => setError(""), 4000);
+      return;
+    }
+
+    setStep(2);
   };
 
   const handleStep2Next = () => {

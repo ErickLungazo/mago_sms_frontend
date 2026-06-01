@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import api from "./api";
 import Landing from "./pages/Landing";
 import CareerGuidance from "./pages/CareerGuidance";
@@ -22,11 +28,26 @@ const NAV_ITEMS = [
   { id: "career", label: "Career Guidance", icon: "🧭", path: "/career" },
   { id: "counselling", label: "Counselling", icon: "💬", path: "/counselling" },
   { id: "clubs", label: "Clubs & Societies", icon: "🤝", path: "/clubs" },
-  { id: "certifications", label: "Certifications", icon: "📜", path: "/certifications" },
+  {
+    id: "certifications",
+    label: "Certifications",
+    icon: "📜",
+    path: "/certifications",
+  },
   { id: "staff", label: "Staff", icon: "👩‍🏫", path: "/staff" },
   { id: "analytics", label: "Analytics", icon: "📈", path: "/analytics" },
-  { id: "interventions", label: "Interventions", icon: "🆘", path: "/interventions" },
-  { id: "job-placements", label: "Job Placements", icon: "💼", path: "/job-placements" },
+  {
+    id: "interventions",
+    label: "Interventions",
+    icon: "🆘",
+    path: "/interventions",
+  },
+  {
+    id: "job-placements",
+    label: "Job Placements",
+    icon: "💼",
+    path: "/job-placements",
+  },
 ];
 
 const SATISFACTION_COLORS = {
@@ -120,205 +141,918 @@ function SectionHeader({ title, action, onAction }) {
 
 // ── PAGES ────────────────────────────────────────────────────────────────────
 function Dashboard({ dbData }) {
+  const [filterDept, setFilterDept] = useState("");
+  const [filterYear, setFilterYear] = useState("");
+  const [filterSatisfaction, setFilterSatisfaction] = useState("");
+
   const studentsArr = Array.isArray(dbData?.students) ? dbData.students : [];
   const deptsArr = Array.isArray(dbData?.departments) ? dbData.departments : [];
   const coursesArr = Array.isArray(dbData?.courses) ? dbData.courses : [];
   const staffArr = Array.isArray(dbData?.staff) ? dbData.staff : [];
 
-  const totalStudents = studentsArr.length;
+  // Apply filters
+  const filteredStudents = studentsArr.filter((s) => {
+    if (
+      filterDept &&
+      String(s?.course?.department_id || s?.course?.department?.id || "") !==
+        String(filterDept)
+    )
+      return false;
+    if (filterYear && s?.intake_year?.toString() !== filterYear) return false;
+    if (
+      filterSatisfaction &&
+      (s?.satisfaction || "Happy") !== filterSatisfaction
+    )
+      return false;
+    return true;
+  });
+
+  // Analytics calculations
+  const totalStudents = filteredStudents.length;
   const totalDepts = deptsArr.length;
   const totalCourses = coursesArr.length;
   const totalStaff = staffArr.length;
+  const staffStudentRatio =
+    totalStaff > 0 ? (totalStudents / totalStaff).toFixed(1) : 0;
+  const avgStudentsPerDept =
+    totalDepts > 0 ? (totalStudents / totalDepts).toFixed(0) : 0;
 
-  const totalSurveyed = totalStudents || 1;
-  const happyPct = Math.round(
-    (studentsArr.filter((s) => (s?.satisfaction || "Happy") === "Happy")
-      .length /
-      totalSurveyed) *
-      100,
-  );
-  const neutralPct = Math.round(
-    (studentsArr.filter((s) => s?.satisfaction === "Neutral").length /
-      totalSurveyed) *
-      100,
-  );
-  const unhappyCount = studentsArr.filter(
+  const totalSurveyed = filteredStudents.length || 1;
+  const happyCount = filteredStudents.filter(
+    (s) => (s?.satisfaction || "Happy") === "Happy",
+  ).length;
+  const neutralCount = filteredStudents.filter(
+    (s) => s?.satisfaction === "Neutral",
+  ).length;
+  const unhappyCount = filteredStudents.filter(
     (s) => s?.satisfaction === "Unhappy",
   ).length;
+
+  const happyPct = Math.round((happyCount / totalSurveyed) * 100);
+  const neutralPct = Math.round((neutralCount / totalSurveyed) * 100);
   const unhappyPct = Math.round((unhappyCount / totalSurveyed) * 100);
 
+  // Gender distribution
+  const maleCount = filteredStudents.filter((s) => s?.gender === "Male").length;
+  const femaleCount = filteredStudents.filter(
+    (s) => s?.gender === "Female",
+  ).length;
+  const otherCount = filteredStudents.filter(
+    (s) => s?.gender === "Other",
+  ).length;
+  const malePct =
+    totalStudents > 0 ? Math.round((maleCount / totalStudents) * 100) : 0;
+  const femalePct =
+    totalStudents > 0 ? Math.round((femaleCount / totalStudents) * 100) : 0;
+
+  // Top courses
+  const courseStats = coursesArr
+    .map((c) => ({
+      name: c?.name || "Unnamed",
+      count: filteredStudents.filter(
+        (s) =>
+          String(s?.course_id || "") === String(c?.id) ||
+          String(s?.course?.id || "") === String(c?.id),
+      ).length,
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  // Intake years
+  const intakeYears = [
+    ...new Set(studentsArr.map((s) => s?.intake_year).filter(Boolean)),
+  ]
+    .sort()
+    .reverse();
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleReset = () => {
+    setFilterDept("");
+    setFilterYear("");
+    setFilterSatisfaction("");
+  };
+
   return (
-    <div>
-      <div style={{ marginBottom: 20 }}>
-        <h1
-          style={{
-            margin: "0 0 4px",
-            fontSize: 22,
-            fontWeight: 700,
-            color: "#111827",
-          }}
-        >
-          Welcome, Career Guidance Office
-        </h1>
-        <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
-          Mago TVTC — Live Operational Dashboard
-        </p>
-      </div>
+    <div style={{ background: "#fff" }}>
+      <style>{`
+        @media print {
+          nav, [data-no-print], button, input, select { display: none !important; }
+          body { background: white; margin: 0; padding: 0; }
+          #dashboard-print-area { width: 100%; margin: 0; padding: 20px; }
+          .print-section { page-break-inside: avoid; margin-bottom: 20px; }
+          .stat-card, .metric-box { break-inside: avoid; }
+        }
+      `}</style>
 
+      {/* Control Bar - No Print */}
       <div
+        data-no-print
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-          gap: 12,
-          marginBottom: 24,
-        }}
-      >
-        <StatCard
-          label="Total students"
-          value={totalStudents}
-          sub="Database rows"
-        />
-        <StatCard label="Departments" value={totalDepts} sub="Resource units" />
-        <StatCard label="Courses offered" value={totalCourses} sub="Programs" />
-        <StatCard
-          label="Staff members"
-          value={totalStaff}
-          sub="Roster profiles"
-        />
-        <StatCard
-          label="Employment rate"
-          value="78%"
-          sub="Target baseline"
-          color="#16a34a"
-        />
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
+          display: "flex",
+          flexDirection: "column",
           gap: 16,
           marginBottom: 24,
+          padding: "16px",
+          background: "#f0faf6",
+          borderRadius: 12,
+          border: "0.5px solid #a7f3d0",
+          flexWrap: "wrap",
         }}
       >
         <div
           style={{
-            background: "#fff",
-            border: "0.5px solid #e5e7eb",
-            borderRadius: 12,
-            padding: "18px 20px",
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            flexWrap: "wrap",
           }}
         >
-          <div
+          <button
+            onClick={handlePrint}
             style={{
+              background: "#10b981",
+              color: "#fff",
+              border: "none",
+              borderRadius: 7,
+              padding: "8px 18px",
               fontSize: 13,
               fontWeight: 600,
-              color: "#374151",
-              marginBottom: 14,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
             }}
           >
-            Live Course Satisfaction
-          </div>
-          {[
-            ["Happy with course", happyPct, "#16a34a"],
-            ["Neutral / unsure", neutralPct, "#d97706"],
-            ["Unhappy — needs intervention", unhappyPct, "#dc2626"],
-          ].map(([label, pct, c]) => (
-            <div key={label} style={{ marginBottom: 10 }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: 12,
-                  marginBottom: 4,
-                }}
-              >
-                <span style={{ color: "#374151" }}>{label}</span>
-                <span style={{ fontWeight: 600, color: c }}>{pct || 0}%</span>
-              </div>
-              <div
-                style={{ height: 8, background: "#f3f4f6", borderRadius: 99 }}
-              >
-                <div
-                  style={{
-                    height: 8,
-                    background: c,
-                    borderRadius: 99,
-                    width: `${pct || 0}%`,
-                    transition: "width 0.4s",
-                  }}
-                />
-              </div>
-            </div>
-          ))}
+            🖨️ Print Report
+          </button>
+          <button
+            onClick={handleReset}
+            style={{
+              background: "#f3f4f6",
+              color: "#374151",
+              border: "1px solid #d1d5db",
+              borderRadius: 7,
+              padding: "8px 18px",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Clear Filters
+          </button>
         </div>
 
         <div
           style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: 12,
+          }}
+        >
+          <div>
+            <label
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#374151",
+                display: "block",
+                marginBottom: 6,
+              }}
+            >
+              Filter by Department
+            </label>
+            <select
+              value={filterDept}
+              onChange={(e) => setFilterDept(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                border: "1px solid #d1d5db",
+                borderRadius: 7,
+                fontSize: 13,
+              }}
+            >
+              <option value="">All Departments</option>
+              {deptsArr.map((d) => (
+                <option key={d?.id} value={d?.id}>
+                  {d?.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#374151",
+                display: "block",
+                marginBottom: 6,
+              }}
+            >
+              Filter by Intake Year
+            </label>
+            <select
+              value={filterYear}
+              onChange={(e) => setFilterYear(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                border: "1px solid #d1d5db",
+                borderRadius: 7,
+                fontSize: 13,
+              }}
+            >
+              <option value="">All Years</option>
+              {intakeYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#374151",
+                display: "block",
+                marginBottom: 6,
+              }}
+            >
+              Filter by Satisfaction
+            </label>
+            <select
+              value={filterSatisfaction}
+              onChange={(e) => setFilterSatisfaction(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                border: "1px solid #d1d5db",
+                borderRadius: 7,
+                fontSize: 13,
+              }}
+            >
+              <option value="">All Status</option>
+              <option value="Happy">Happy ✓</option>
+              <option value="Neutral">Neutral ~</option>
+              <option value="Unhappy">Unhappy ✗</option>
+            </select>
+          </div>
+        </div>
+
+        {(filterDept || filterYear || filterSatisfaction) && (
+          <div style={{ fontSize: 12, color: "#059669", fontWeight: 600 }}>
+            📊 Showing {filteredStudents.length} of {studentsArr.length} records
+          </div>
+        )}
+      </div>
+
+      <div id="dashboard-print-area">
+        {/* Header */}
+        <div style={{ marginBottom: 20 }}>
+          <h1
+            style={{
+              margin: "0 0 4px",
+              fontSize: "clamp(20px, 5vw, 28px)",
+              fontWeight: 700,
+              color: "#111827",
+            }}
+          >
+            Career Guidance Office Dashboard
+          </h1>
+          <p style={{ margin: "0 0 8px", color: "#6b7280", fontSize: 14 }}>
+            Mago TVTC — Operational Analytics Report
+          </p>
+          <p style={{ margin: 0, color: "#9ca3af", fontSize: 12 }}>
+            Generated: {new Date().toLocaleDateString()} |{" "}
+            {new Date().toLocaleTimeString()}
+          </p>
+        </div>
+
+        {/* Key Metrics Row 1 */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+            gap: 12,
+            marginBottom: 24,
+          }}
+          className="print-section"
+        >
+          <StatCard
+            label="Total Students"
+            value={totalStudents}
+            sub="Active enrollment"
+          />
+          <StatCard
+            label="Departments"
+            value={totalDepts}
+            sub="Resource units"
+          />
+          <StatCard
+            label="Courses"
+            value={totalCourses}
+            sub="Available programs"
+          />
+          <StatCard
+            label="Staff Members"
+            value={totalStaff}
+            sub="Roster profiles"
+          />
+          <StatCard
+            label="Avg per Dept"
+            value={avgStudentsPerDept}
+            sub="Distribution"
+            color="#059669"
+          />
+          <StatCard
+            label="Staff:Student"
+            value={`1:${staffStudentRatio}`}
+            sub="Ratio"
+            color="#0891b2"
+          />
+        </div>
+
+        {/* Satisfaction & Demographics Row */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 16,
+            marginBottom: 24,
+          }}
+          className="print-section"
+        >
+          {/* Satisfaction */}
+          <div
+            style={{
+              background: "#fff",
+              border: "0.5px solid #e5e7eb",
+              borderRadius: 12,
+              padding: "18px 20px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: "#111827",
+                marginBottom: 16,
+              }}
+            >
+              📊 Course Satisfaction
+            </div>
+            {[
+              ["Happy with course", happyPct, "#16a34a"],
+              ["Neutral / unsure", neutralPct, "#d97706"],
+              ["Unhappy (intervention)", unhappyPct, "#dc2626"],
+            ].map(([label, pct, c]) => (
+              <div key={label} style={{ marginBottom: 12 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: 12,
+                    marginBottom: 4,
+                  }}
+                >
+                  <span style={{ color: "#374151", fontWeight: 500 }}>
+                    {label}
+                  </span>
+                  <span style={{ fontWeight: 700, color: c }}>{pct}%</span>
+                </div>
+                <div
+                  style={{ height: 10, background: "#f3f4f6", borderRadius: 6 }}
+                >
+                  <div
+                    style={{
+                      height: 10,
+                      background: c,
+                      borderRadius: 6,
+                      width: `${pct}%`,
+                      transition: "width 0.4s",
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+            <div
+              style={{
+                marginTop: 14,
+                padding: "10px 12px",
+                background: "#f0fdf4",
+                borderRadius: 8,
+                fontSize: 12,
+                color: "#166534",
+                fontWeight: 600,
+              }}
+            >
+              ✓ {Math.round((happyPct / 100) * totalSurveyed)} students
+              satisfied
+            </div>
+          </div>
+
+          {/* Gender Distribution */}
+          <div
+            style={{
+              background: "#fff",
+              border: "0.5px solid #e5e7eb",
+              borderRadius: 12,
+              padding: "18px 20px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: "#111827",
+                marginBottom: 16,
+              }}
+            >
+              👥 Gender Distribution
+            </div>
+            {[
+              ["Male", malePct, "#3b82f6", maleCount],
+              ["Female", femalePct, "#ec4899", femaleCount],
+              ["Other", 100 - malePct - femalePct, "#8b5cf6", otherCount],
+            ].map(([label, pct, c, count]) => (
+              <div key={label} style={{ marginBottom: 12 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: 12,
+                    marginBottom: 4,
+                  }}
+                >
+                  <span style={{ color: "#374151", fontWeight: 500 }}>
+                    {label} ({count})
+                  </span>
+                  <span style={{ fontWeight: 700, color: c }}>{pct}%</span>
+                </div>
+                <div
+                  style={{ height: 10, background: "#f3f4f6", borderRadius: 6 }}
+                >
+                  <div
+                    style={{
+                      height: 10,
+                      background: c,
+                      borderRadius: 6,
+                      width: `${pct}%`,
+                      transition: "width 0.4s",
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Students by Department */}
+          <div
+            style={{
+              background: "#fff",
+              border: "0.5px solid #e5e7eb",
+              borderRadius: 12,
+              padding: "18px 20px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: "#111827",
+                marginBottom: 16,
+              }}
+            >
+              🏛️ Students by Department
+            </div>
+            {deptsArr.length === 0 ? (
+              <div style={{ fontSize: 12, color: "#9ca3af" }}>
+                No departments registered.
+              </div>
+            ) : (
+              deptsArr.map((d) => {
+                const count = filteredStudents.filter(
+                  (s) =>
+                    String(
+                      s?.course?.department_id || s?.course?.department?.id || "",
+                    ) === String(d?.id) || s?.dept === d?.name,
+                ).length;
+                const pctOfTotal =
+                  totalStudents > 0
+                    ? Math.round((count / totalStudents) * 100)
+                    : 0;
+                return (
+                  <div key={d?.id} style={{ marginBottom: 10 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        fontSize: 12,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <span style={{ color: "#374151", fontWeight: 500 }}>
+                        {d?.name}
+                      </span>
+                      <span style={{ fontWeight: 700, color: BRAND }}>
+                        {count} ({pctOfTotal}%)
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        height: 8,
+                        background: "#f3f4f6",
+                        borderRadius: 4,
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: 8,
+                          background: BRAND,
+                          borderRadius: 4,
+                          width: `${pctOfTotal}%`,
+                          transition: "width 0.4s",
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Top Courses */}
+        {courseStats.length > 0 && (
+          <div
+            style={{
+              background: "#fff",
+              border: "0.5px solid #e5e7eb",
+              borderRadius: 12,
+              padding: "18px 20px",
+              marginBottom: 24,
+            }}
+            className="print-section"
+          >
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: "#111827",
+                marginBottom: 16,
+              }}
+            >
+              📚 Top 5 Courses by Enrollment
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: 12,
+              }}
+            >
+              {courseStats.map((course, idx) => (
+                <div
+                  key={course.name}
+                  style={{
+                    background: `${BRAND}15`,
+                    border: `1px solid ${BRAND}30`,
+                    borderRadius: 10,
+                    padding: "14px 16px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <span
+                      style={{
+                        background: BRAND,
+                        color: "#fff",
+                        width: 24,
+                        height: 24,
+                        borderRadius: 50,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 12,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {idx + 1}
+                    </span>
+                    <span
+                      style={{ fontSize: 12, fontWeight: 700, color: BRAND }}
+                    >
+                      {course.count} students
+                    </span>
+                  </div>
+                  <div
+                    style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}
+                  >
+                    {course.name}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Summary Section */}
+        <div
+          style={{
+            background: "#f0fdf4",
+            border: "1px solid #86efac",
+            borderRadius: 12,
+            padding: "16px 18px",
+            marginBottom: 24,
+          }}
+          className="print-section"
+        >
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: "#166534",
+              marginBottom: 10,
+            }}
+          >
+            📋 Report Summary
+          </div>
+          <ul
+            style={{
+              margin: 0,
+              paddingLeft: 20,
+              fontSize: 12,
+              color: "#166534",
+              lineHeight: 1.8,
+            }}
+          >
+            <li>
+              Total active students: <strong>{totalStudents}</strong>
+            </li>
+            <li>
+              Staff-to-student ratio: <strong>1:{staffStudentRatio}</strong>
+            </li>
+            <li>
+              Satisfaction rate: <strong>{happyPct}%</strong> positive feedback
+            </li>
+            <li>
+              Gender split:{" "}
+              <strong>
+                {malePct}% male, {femalePct}% female
+              </strong>
+            </li>
+            <li>
+              Average students per department:{" "}
+              <strong>{avgStudentsPerDept}</strong>
+            </li>
+            <li>
+              Students requiring intervention: <strong>{unhappyCount}</strong>
+            </li>
+          </ul>
+        </div>
+
+        {/* Student Report Ledger - Specialized Table Section */}
+        <div
+          id="student-report-ledger"
+          className="print-section"
+          style={{
             background: "#fff",
             border: "0.5px solid #e5e7eb",
             borderRadius: 12,
             padding: "18px 20px",
           }}
         >
+          <style>{`
+            @media print {
+              #student-report-ledger { border: none !important; padding: 0 !important; }
+              .no-print-table-header { display: block !important; }
+              table { font-size: 11px !important; }
+              th, td { padding: 8px 6px !important; }
+              .badge-print { border: 1px solid #ccc !important; padding: 1px 4px !important; }
+              .only-print-ledger > *:not(#student-report-ledger) { display: none !important; }
+              .only-print-ledger #student-report-ledger { display: block !important; width: 100% !important; position: absolute; top: 0; left: 0; }
+            }
+            .no-print-table-header { display: none; }
+          `}</style>
+
+          {/* Branding for Print-only */}
+          <div className="no-print-table-header" style={{ marginBottom: 20 }}>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: 22,
+                fontWeight: 800,
+                color: BRAND,
+                textAlign: "center",
+              }}
+            >
+              MAGO TECHNICAL AND VOCATIONAL COLLEGE
+            </h1>
+            <h2
+              style={{
+                margin: "4px 0 20px",
+                fontSize: 16,
+                fontWeight: 600,
+                color: "#374151",
+                textAlign: "center",
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+              }}
+            >
+              Career Analytics Intelligent Report
+            </h2>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 12,
+                color: "#6b7280",
+                borderBottom: "2px solid #f3f4f6",
+                paddingBottom: 8,
+              }}
+            >
+              <span>Generated: {new Date().toLocaleDateString()}</span>
+              <span>
+                Filter Criteria:{" "}
+                {filterDept ? "Dept Filter Active" : "All Depts"} |{" "}
+                {filterSatisfaction || "All Status"}
+              </span>
+            </div>
+          </div>
+
           <div
             style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: "#374151",
-              marginBottom: 14,
+              fontSize: 14,
+              fontWeight: 700,
+              color: "#111827",
+              marginBottom: 16,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
             }}
           >
-            Students by Department
-          </div>
-          {deptsArr.length === 0 ? (
-            <div style={{ fontSize: 12, color: "#9ca3af" }}>
-              No department profiles registered.
+            <span>📜 Student Details Ledger</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 11, color: "#6b7280", fontWeight: 500 }}>
+                {filteredStudents.length} Records Found
+              </span>
+              <button
+                onClick={() => {
+                  const area = document.getElementById("dashboard-print-area");
+                  area.classList.add("only-print-ledger");
+                  window.print();
+                  area.classList.remove("only-print-ledger");
+                }}
+                style={{
+                  background: "#f3f4f6",
+                  border: "1px solid #d1d5db",
+                  borderRadius: 6,
+                  padding: "4px 10px",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                🖨️ Print Table Only
+              </button>
             </div>
-          ) : (
-            deptsArr.map((d) => {
-              const count =
-                studentsArr.filter(
-                  (s) => (s?.course?.department_id || s?.course?.department?.id) === d?.id || s?.dept === d?.name,
-                ).length || 0;
-              return (
-                <div
-                  key={d?.id || d?.name}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    marginBottom: 10,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: 3,
-                      background: BRAND,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span style={{ fontSize: 12, color: "#374151", flex: 1 }}>
-                    {d?.name || "Unnamed Unit"}
-                  </span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: BRAND }}>
-                    {count}
-                  </span>
-                </div>
-              );
-            })
-          )}
+          </div>
+
+          <div style={{ overflowX: "auto" }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                textAlign: "left",
+                fontSize: 12,
+              }}
+            >
+              <thead>
+                <tr style={{ background: "#f9fafb" }}>
+                  {[
+                    "Adm No.",
+                    "Full Name",
+                    "Department / Course",
+                    "Year",
+                    "Contact",
+                    "Satisfaction",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      style={{
+                        padding: "12px 14px",
+                        color: "#4b5563",
+                        fontWeight: 700,
+                        borderBottom: "1.5px solid #e5e7eb",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStudents.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      style={{
+                        padding: 30,
+                        textAlign: "center",
+                        color: "#9ca3af",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      No students found matching current filter criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredStudents.map((s) => (
+                    <tr
+                      key={s.id}
+                      style={{ borderBottom: "1px solid #f3f4f6" }}
+                    >
+                      <td
+                        style={{
+                          padding: "10px 14px",
+                          fontFamily: "monospace",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {s.admission_number || s.id}
+                      </td>
+                      <td
+                        style={{
+                          padding: "10px 14px",
+                          fontWeight: 600,
+                          color: "#111827",
+                        }}
+                      >
+                        {s.name}
+                      </td>
+                      <td style={{ padding: "10px 14px", color: "#4b5563" }}>
+                        <div style={{ fontWeight: 500 }}>
+                          {s.course?.name || "N/A"}
+                        </div>
+                        <div style={{ fontSize: 10, color: "#9ca3af" }}>
+                          {s.course?.department?.name || "Unassigned"}
+                        </div>
+                      </td>
+                      <td style={{ padding: "10px 14px" }}>
+                        {s.intake_year || "—"}
+                      </td>
+                      <td style={{ padding: "10px 14px", color: "#6b7280" }}>
+                        {s.phone || "—"}
+                      </td>
+                      <td style={{ padding: "10px 14px" }}>
+                        <span
+                          className="badge-print"
+                          style={{
+                            background:
+                              SATISFACTION_BG[s.satisfaction || "Happy"],
+                            color:
+                              SATISFACTION_COLORS[s.satisfaction || "Happy"],
+                            padding: "2px 8px",
+                            borderRadius: 6,
+                            fontSize: 10,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {s.satisfaction || "Happy"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function Departments({ dbData, onRefresh, headers }) {
+function Departments({ dbData, onRefresh }) {
   const [showForm, setShowForm] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
     name: "",
     code: "",
@@ -332,29 +1066,36 @@ function Departments({ dbData, onRefresh, headers }) {
     setForm({ name: "", code: "", hod_id: "", color: "" });
     setEditingDepartment(null);
     setShowForm(false);
+    setError("");
   };
 
   const handleSave = async () => {
-    const method = editingDepartment ? "PUT" : "POST";
-    const url = editingDepartment
-      ? `/api/departments/${editingDepartment.id}`
-      : "/api/departments";
+    setLoading(true);
+    setError("");
+    try {
+      const payload = {
+        name: form.name,
+        code: form.code,
+        ...(form.hod_id ? { hod_id: form.hod_id } : {}),
+        ...(form.color ? { color: form.color } : {}),
+      };
 
-    const payload = {
-      name: form.name,
-      code: form.code,
-      ...(form.hod_id ? { hod_id: form.hod_id } : {}),
-      ...(form.color ? { color: form.color } : {}),
-    };
-
-    await fetch(url, {
-      method,
-      headers,
-      body: JSON.stringify(payload),
-    });
-
-    onRefresh();
-    resetForm();
+      if (editingDepartment) {
+        await api.put(`/departments/${editingDepartment.id}`, payload);
+      } else {
+        await api.post("/departments", payload);
+      }
+      onRefresh();
+      resetForm();
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to save department details."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const startEdit = (department) => {
@@ -370,13 +1111,12 @@ function Departments({ dbData, onRefresh, headers }) {
 
   const handleDelete = async (department) => {
     if (!window.confirm("Delete this department?")) return;
-
-    await fetch(`/api/departments/${department.id}`, {
-      method: "DELETE",
-      headers,
-    });
-
-    onRefresh();
+    try {
+      await api.delete(`/departments/${department.id}`);
+      onRefresh();
+    } catch (err) {
+      alert("Failed to delete department.");
+    }
   };
 
   return (
@@ -403,6 +1143,20 @@ function Departments({ dbData, onRefresh, headers }) {
             marginBottom: 20,
           }}
         >
+          {error && (
+            <div
+              style={{
+                background: "#fee2e2",
+                color: "#dc2626",
+                padding: "8px 12px",
+                borderRadius: 6,
+                fontSize: 12,
+                marginBottom: 14,
+              }}
+            >
+              {error}
+            </div>
+          )}
           <div
             style={{
               display: "grid",
@@ -526,6 +1280,7 @@ function Departments({ dbData, onRefresh, headers }) {
           <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
             <button
               onClick={handleSave}
+              disabled={loading}
               style={{
                 background: BRAND,
                 color: "#fff",
@@ -533,13 +1288,19 @@ function Departments({ dbData, onRefresh, headers }) {
                 borderRadius: 7,
                 padding: "8px 20px",
                 cursor: "pointer",
+                opacity: loading ? 0.7 : 1,
               }}
             >
-              {editingDepartment ? "Update Department" : "Save Department"}
+              {loading
+                ? "Processing..."
+                : editingDepartment
+                ? "Update Department"
+                : "Save Department"}
             </button>
             <button
               type="button"
               onClick={resetForm}
+              disabled={loading}
               style={{
                 background: "#fff",
                 border: "1px solid #d1d5db",
@@ -634,9 +1395,11 @@ function Departments({ dbData, onRefresh, headers }) {
   );
 }
 
-function Courses({ dbData, onRefresh, headers }) {
+function Courses({ dbData, onRefresh }) {
   const [showForm, setShowForm] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
     department_id: "",
     certification_id: "",
@@ -645,10 +1408,16 @@ function Courses({ dbData, onRefresh, headers }) {
     duration: "",
   });
   const coursesArr = Array.isArray(dbData?.courses) ? dbData.courses : [];
-  const departmentsArr = Array.isArray(dbData?.departments) ? dbData.departments : [];
-  const certificationsArr = Array.isArray(dbData?.certifications) ? dbData.certifications : [];
-  
-  const selectedCertification = certificationsArr.find(c => String(c.id) === String(form.certification_id));
+  const departmentsArr = Array.isArray(dbData?.departments)
+    ? dbData.departments
+    : [];
+  const certificationsArr = Array.isArray(dbData?.certifications)
+    ? dbData.certifications
+    : [];
+
+  const selectedCertification = certificationsArr.find(
+    (c) => String(c.id) === String(form.certification_id),
+  );
   const levelsArr = selectedCertification?.levels || [];
 
   const resetForm = () => {
@@ -661,25 +1430,32 @@ function Courses({ dbData, onRefresh, headers }) {
     });
     setEditingCourse(null);
     setShowForm(false);
+    setError("");
   };
 
   const handleSave = async () => {
-    const method = editingCourse ? "PUT" : "POST";
-    const url = editingCourse ? `/api/courses/${editingCourse.id}` : "/api/courses";
-
-    await fetch(url, {
-      method,
-      headers,
-      body: JSON.stringify({
+    setLoading(true);
+    setError("");
+    try {
+      const payload = {
         department_id: form.department_id,
         certification_level_id: form.certification_level_id,
         name: form.name,
         duration: form.duration,
-      }),
-    });
+      };
 
-    onRefresh();
-    resetForm();
+      if (editingCourse) {
+        await api.put(`/courses/${editingCourse.id}`, payload);
+      } else {
+        await api.post("/courses", payload);
+      }
+      onRefresh();
+      resetForm();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to save course.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const startEdit = (course) => {
@@ -696,19 +1472,22 @@ function Courses({ dbData, onRefresh, headers }) {
 
   const handleDelete = async (course) => {
     if (!window.confirm("Delete this course?")) return;
-    await fetch(`/api/courses/${course.id}`, {
-      method: "DELETE",
-      headers,
-    });
-    onRefresh();
+    try {
+      await api.delete(`/courses/${course.id}`);
+      onRefresh();
+    } catch (err) {
+      alert("Failed to delete course.");
+    }
   };
 
   const handleLevelChange = (levelId) => {
-    const level = levelsArr.find(l => String(l.id) === String(levelId));
-    setForm(f => ({
+    const level = levelsArr.find((l) => String(l.id) === String(levelId));
+    setForm((f) => ({
       ...f,
       certification_level_id: levelId,
-      duration: level ? `${level.period_count} ${level.duration_type}` : f.duration
+      duration: level
+        ? `${level.period_count} ${level.duration_type}`
+        : f.duration,
     }));
   };
 
@@ -743,6 +1522,20 @@ function Courses({ dbData, onRefresh, headers }) {
             marginBottom: 20,
           }}
         >
+          {error && (
+            <div
+              style={{
+                background: "#fee2e2",
+                color: "#dc2626",
+                padding: "8px 12px",
+                borderRadius: 6,
+                fontSize: 12,
+                marginBottom: 14,
+              }}
+            >
+              {error}
+            </div>
+          )}
           <div
             style={{
               display: "grid",
@@ -751,72 +1544,213 @@ function Courses({ dbData, onRefresh, headers }) {
             }}
           >
             <div>
-              <label style={{ fontSize: 12, color: "#374151", display: "block", marginBottom: 4 }}>Department</label>
+              <label
+                style={{
+                  fontSize: 12,
+                  color: "#374151",
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                Department
+              </label>
               <select
                 value={form.department_id}
-                onChange={(e) => setForm((f) => ({ ...f, department_id: e.target.value }))}
-                style={{ width: "100%", padding: "7px 10px", border: "0.5px solid #d1d5db", borderRadius: 7, fontSize: 13, boxSizing: "border-box" }}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, department_id: e.target.value }))
+                }
+                style={{
+                  width: "100%",
+                  padding: "7px 10px",
+                  border: "0.5px solid #d1d5db",
+                  borderRadius: 7,
+                  fontSize: 13,
+                  boxSizing: "border-box",
+                }}
               >
                 <option value="">Select Department...</option>
-                {departmentsArr.map((dept) => <option key={dept.id} value={dept.id}>{dept.name}</option>)}
+                {departmentsArr.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 12, color: "#374151", display: "block", marginBottom: 4 }}>Certification Authority</label>
+              <label
+                style={{
+                  fontSize: 12,
+                  color: "#374151",
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                Certification Authority
+              </label>
               <select
                 value={form.certification_id}
-                onChange={(e) => setForm((f) => ({ ...f, certification_id: e.target.value, certification_level_id: "" }))}
-                style={{ width: "100%", padding: "7px 10px", border: "0.5px solid #d1d5db", borderRadius: 7, fontSize: 13, boxSizing: "border-box" }}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    certification_id: e.target.value,
+                    certification_level_id: "",
+                  }))
+                }
+                style={{
+                  width: "100%",
+                  padding: "7px 10px",
+                  border: "0.5px solid #d1d5db",
+                  borderRadius: 7,
+                  fontSize: 13,
+                  boxSizing: "border-box",
+                }}
               >
                 <option value="">Select Certification...</option>
-                {certificationsArr.map((cert) => <option key={cert.id} value={cert.id}>{cert.name}</option>)}
+                {certificationsArr.map((cert) => (
+                  <option key={cert.id} value={cert.id}>
+                    {cert.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 12, color: "#374151", display: "block", marginBottom: 4 }}>Level / Grade</label>
+              <label
+                style={{
+                  fontSize: 12,
+                  color: "#374151",
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                Level / Grade
+              </label>
               <select
                 value={form.certification_level_id}
                 onChange={(e) => handleLevelChange(e.target.value)}
                 disabled={!form.certification_id}
-                style={{ width: "100%", padding: "7px 10px", border: "0.5px solid #d1d5db", borderRadius: 7, fontSize: 13, boxSizing: "border-box" }}
+                style={{
+                  width: "100%",
+                  padding: "7px 10px",
+                  border: "0.5px solid #d1d5db",
+                  borderRadius: 7,
+                  fontSize: 13,
+                  boxSizing: "border-box",
+                }}
               >
                 <option value="">Select Level...</option>
-                {levelsArr.map((lvl) => <option key={lvl.id} value={lvl.id}>{lvl.name}</option>)}
+                {levelsArr.map((lvl) => (
+                  <option key={lvl.id} value={lvl.id}>
+                    {lvl.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12, marginTop: 12 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "2fr 1fr",
+              gap: 12,
+              marginTop: 12,
+            }}
+          >
             <div>
-              <label style={{ fontSize: 12, color: "#374151", display: "block", marginBottom: 4 }}>Course Name</label>
+              <label
+                style={{
+                  fontSize: 12,
+                  color: "#374151",
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                Course Name
+              </label>
               <input
                 value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, name: e.target.value }))
+                }
                 placeholder="e.g. Solar Systems Engineering"
-                style={{ width: "100%", padding: "7px 10px", border: "0.5px solid #d1d5db", borderRadius: 7, fontSize: 13, boxSizing: "border-box" }}
+                style={{
+                  width: "100%",
+                  padding: "7px 10px",
+                  border: "0.5px solid #d1d5db",
+                  borderRadius: 7,
+                  fontSize: 13,
+                  boxSizing: "border-box",
+                }}
               />
             </div>
             <div>
-              <label style={{ fontSize: 12, color: "#374151", display: "block", marginBottom: 4 }}>Duration Override</label>
+              <label
+                style={{
+                  fontSize: 12,
+                  color: "#374151",
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                Duration Override
+              </label>
               <input
                 value={form.duration}
-                onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, duration: e.target.value }))
+                }
                 placeholder="e.g. 24 Months"
-                style={{ width: "100%", padding: "7px 10px", border: "0.5px solid #d1d5db", borderRadius: 7, fontSize: 13, boxSizing: "border-box" }}
+                style={{
+                  width: "100%",
+                  padding: "7px 10px",
+                  border: "0.5px solid #d1d5db",
+                  borderRadius: 7,
+                  fontSize: 13,
+                  boxSizing: "border-box",
+                }}
               />
             </div>
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
             <button
               onClick={handleSave}
-              disabled={!form.department_id || !form.certification_level_id || !form.name}
-              style={{ background: BRAND, color: "#fff", border: "none", borderRadius: 7, padding: "8px 20px", cursor: "pointer", opacity: (!form.department_id || !form.certification_level_id || !form.name) ? 0.6 : 1 }}
+              disabled={
+                loading ||
+                !form.department_id ||
+                !form.certification_level_id ||
+                !form.name
+              }
+              style={{
+                background: BRAND,
+                color: "#fff",
+                border: "none",
+                borderRadius: 7,
+                padding: "8px 20px",
+                cursor: "pointer",
+                opacity:
+                  loading ||
+                  !form.department_id ||
+                  !form.certification_level_id ||
+                  !form.name
+                    ? 0.6
+                    : 1,
+              }}
             >
-              {editingCourse ? "Update Course" : "Save Course"}
+              {loading
+                ? "Processing..."
+                : editingCourse
+                ? "Update Course"
+                : "Save Course"}
             </button>
             <button
               type="button"
               onClick={resetForm}
-              style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 7, padding: "8px 20px", cursor: "pointer" }}
+              disabled={loading}
+              style={{
+                background: "#fff",
+                border: "1px solid #d1d5db",
+                borderRadius: 7,
+                padding: "8px 20px",
+                cursor: "pointer",
+              }}
             >
               Cancel
             </button>
@@ -824,33 +1758,94 @@ function Courses({ dbData, onRefresh, headers }) {
         </div>
       )}
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <table
+          style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}
+        >
           <thead>
             <tr style={{ background: "#f9fafb" }}>
-              {["Course Name", "Certification", "Level", "Duration", "Actions"].map((h) => (
-                <th key={h} style={{ padding: "10px 14px", textAlign: "left", color: "#6b7280", borderBottom: "0.5px solid #e5e7eb" }}>{h}</th>
+              {[
+                "Course Name",
+                "Certification",
+                "Level",
+                "Duration",
+                "Actions",
+              ].map((h) => (
+                <th
+                  key={h}
+                  style={{
+                    padding: "10px 14px",
+                    textAlign: "left",
+                    color: "#6b7280",
+                    borderBottom: "0.5px solid #e5e7eb",
+                  }}
+                >
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {coursesArr.length === 0 ? (
-              <tr><td colSpan={5} style={{ padding: 14, color: "#9ca3af", textAlign: "center" }}>No catalog rows returned.</td></tr>
+              <tr>
+                <td
+                  colSpan={5}
+                  style={{ padding: 14, color: "#9ca3af", textAlign: "center" }}
+                >
+                  No catalog rows returned.
+                </td>
+              </tr>
             ) : (
               coursesArr.map((c) => (
                 <tr key={c?.id} style={{ borderBottom: "0.5px solid #f3f4f6" }}>
-                  <td style={{ padding: "10px 14px", fontWeight: 500 }}>{c?.name}</td>
+                  <td style={{ padding: "10px 14px", fontWeight: 500 }}>
+                    {c?.name}
+                  </td>
                   <td style={{ padding: "10px 14px" }}>
                     <Badge
-                      label={c?.certification_level?.certification?.acronym || c?.certification_level?.certification?.name || "N/A"}
+                      label={
+                        c?.certification_level?.certification?.acronym ||
+                        c?.certification_level?.certification?.name ||
+                        "N/A"
+                      }
                       color="#1a6eb5"
                       bg="#dbeafe"
                     />
                   </td>
-                  <td style={{ padding: "10px 14px", color: "#6b7280" }}>{c?.certification_level?.name || "—"}</td>
-                  <td style={{ padding: "10px 14px" }}>{c?.duration || "Modular"}</td>
+                  <td style={{ padding: "10px 14px", color: "#6b7280" }}>
+                    {c?.certification_level?.name || "—"}
+                  </td>
+                  <td style={{ padding: "10px 14px" }}>
+                    {c?.duration || "Modular"}
+                  </td>
                   <td style={{ padding: "10px 14px", display: "flex", gap: 6 }}>
-                    <button type="button" onClick={() => startEdit(c)} style={{ background: "#eef2ff", border: "none", borderRadius: 6, color: "#1d4ed8", padding: "6px 10px", cursor: "pointer" }}>Edit</button>
-                    <button type="button" onClick={() => handleDelete(c)} style={{ background: "#fee2e2", border: "none", borderRadius: 6, color: "#b91c1c", padding: "6px 10px", cursor: "pointer" }}>Delete</button>
+                    <button
+                      type="button"
+                      onClick={() => startEdit(c)}
+                      style={{
+                        background: "#eef2ff",
+                        border: "none",
+                        borderRadius: 6,
+                        color: "#1d4ed8",
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(c)}
+                      style={{
+                        background: "#fee2e2",
+                        border: "none",
+                        borderRadius: 6,
+                        color: "#b91c1c",
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))
@@ -864,6 +1859,9 @@ function Courses({ dbData, onRefresh, headers }) {
 
 function Students({ dbData, onRefresh, headers }) {
   const [search, setSearch] = useState("");
+  const [filterDept, setFilterDept] = useState("");
+  const [filterYear, setFilterYear] = useState("");
+  const [filterSatisfaction, setFilterSatisfaction] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [form, setForm] = useState({
@@ -878,12 +1876,41 @@ function Students({ dbData, onRefresh, headers }) {
   });
   const studentsArr = Array.isArray(dbData?.students) ? dbData.students : [];
   const coursesArr = Array.isArray(dbData?.courses) ? dbData.courses : [];
+  const deptsArr = Array.isArray(dbData?.departments) ? dbData.departments : [];
 
-  const filtered = studentsArr.filter(
-    (s) =>
+  const intakeYears = [
+    ...new Set(studentsArr.map((s) => s?.intake_year).filter(Boolean)),
+  ]
+    .sort()
+    .reverse();
+
+  const filtered = studentsArr.filter((s) => {
+    // Search filter
+    const matchesSearch =
       s?.name?.toLowerCase().includes(search.toLowerCase()) ||
-      s?.admission_number?.toLowerCase().includes(search.toLowerCase()),
-  );
+      s?.admission_number?.toLowerCase().includes(search.toLowerCase());
+    if (!matchesSearch) return false;
+
+    // Dept filter
+    if (
+      filterDept &&
+      String(s?.course?.department_id || s?.course?.department?.id || "") !==
+        String(filterDept)
+    )
+      return false;
+
+    // Year filter
+    if (filterYear && s?.intake_year?.toString() !== filterYear) return false;
+
+    // Satisfaction filter
+    if (
+      filterSatisfaction &&
+      (s?.satisfaction || "Happy") !== filterSatisfaction
+    )
+      return false;
+
+    return true;
+  });
 
   const resetForm = () => {
     setForm({
@@ -900,44 +1927,66 @@ function Students({ dbData, onRefresh, headers }) {
     setShowForm(false);
   };
 
-  const handleSave = () => {
-    const method = editingStudent ? "PUT" : "POST";
-    const url = editingStudent
-      ? `/api/students/${editingStudent.id}`
-      : "/api/students";
+  const handleSave = async () => {
+    const currentYear = new Date().getFullYear();
+    const intakeYear = parseInt(form.intake_year, 10);
 
-    const payload = editingStudent
-      ? {
-          course_id: form.course_id || undefined,
-          name: form.name || undefined,
-          national_id_or_birth_cert:
-            form.national_id_or_birth_cert || undefined,
-          phone: form.phone || undefined,
-          county: form.county || undefined,
-          gender: form.gender || undefined,
-          intake_year: form.intake_year
-            ? parseInt(form.intake_year, 10)
-            : undefined,
-        }
-      : {
-          id: form.id,
-          course_id: form.course_id,
-          name: form.name,
-          national_id_or_birth_cert: form.national_id_or_birth_cert,
-          phone: form.phone,
-          county: form.county,
-          gender: form.gender,
-          intake_year: parseInt(form.intake_year, 10),
-        };
+    // Constraint: Cannot enrol/add if year is > 3 years ago
+    // Only apply to new students or when changing the year of an existing student
+    const isNew = !editingStudent;
+    const yearChanged =
+      editingStudent &&
+      parseInt(editingStudent.intake_year, 10) !== intakeYear;
 
-    fetch(url, {
-      method,
-      headers,
-      body: JSON.stringify(payload),
-    }).then(() => {
+    if ((isNew || yearChanged) && intakeYear < currentYear - 3) {
+      alert(
+        `Policy Restriction: Admission year cannot be more than 3 years ago (minimum allowed: ${
+          currentYear - 3
+        }).`,
+      );
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const payload = editingStudent
+        ? {
+            ...form,
+            course_id: form.course_id || undefined,
+            name: form.name || undefined,
+            national_id_or_birth_cert:
+              form.national_id_or_birth_cert || undefined,
+            phone: form.phone || undefined,
+            county: form.county || undefined,
+            gender: form.gender || undefined,
+            intake_year: form.intake_year
+              ? parseInt(form.intake_year, 10)
+              : undefined,
+          }
+        : {
+            id: form.id,
+            course_id: form.course_id,
+            name: form.name,
+            national_id_or_birth_cert: form.national_id_or_birth_cert,
+            phone: form.phone,
+            county: form.county,
+            gender: form.gender,
+            intake_year: parseInt(form.intake_year, 10),
+          };
+
+      if (editingStudent) {
+        await api.put(`/students/${editingStudent.id}`, payload);
+      } else {
+        await api.post("/students", payload);
+      }
       onRefresh();
       resetForm();
-    });
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to save student record.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const startEdit = (student) => {
@@ -956,12 +2005,14 @@ function Students({ dbData, onRefresh, headers }) {
     setShowForm(true);
   };
 
-  const handleDelete = (student) => {
+  const handleDelete = async (student) => {
     if (!window.confirm("Delete this student record?")) return;
-    fetch(`/api/students/${student.id}`, {
-      method: "DELETE",
-      headers,
-    }).then(() => onRefresh());
+    try {
+      await api.delete(`/students/${student.id}`);
+      onRefresh();
+    } catch (err) {
+      alert("Failed to delete student record.");
+    }
   };
 
   return (
@@ -988,6 +2039,20 @@ function Students({ dbData, onRefresh, headers }) {
             marginBottom: 20,
           }}
         >
+          {error && (
+            <div
+              style={{
+                background: "#fee2e2",
+                color: "#dc2626",
+                padding: "8px 12px",
+                borderRadius: 6,
+                fontSize: 12,
+                marginBottom: 14,
+              }}
+            >
+              {error}
+            </div>
+          )}
           <div
             style={{
               display: "grid",
@@ -1080,8 +2145,8 @@ function Students({ dbData, onRefresh, headers }) {
             </select>
             <input
               type="number"
-              min="2000"
-              max="2100"
+              min={new Date().getFullYear() - 3}
+              max={new Date().getFullYear() + 1}
               placeholder="Intake Year"
               value={form.intake_year}
               onChange={(e) =>
@@ -1097,6 +2162,7 @@ function Students({ dbData, onRefresh, headers }) {
           <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
             <button
               onClick={handleSave}
+              disabled={loading}
               style={{
                 background: BRAND,
                 color: "#fff",
@@ -1104,40 +2170,101 @@ function Students({ dbData, onRefresh, headers }) {
                 borderRadius: 7,
                 padding: "8px 20px",
                 cursor: "pointer",
+                opacity: loading ? 0.7 : 1,
               }}
             >
-              {editingStudent ? "Update Record" : "Commit Record"}
+              {loading
+                ? "Processing..."
+                : editingStudent
+                ? "Update Record"
+                : "Commit Record"}
             </button>
-            {editingStudent && (
-              <button
-                type="button"
-                onClick={resetForm}
-                style={{
-                  background: "#fff",
-                  border: "1px solid #d1d5db",
-                  borderRadius: 7,
-                  padding: "8px 20px",
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={resetForm}
+              disabled={loading}
+              style={{
+                background: "#fff",
+                border: "1px solid #d1d5db",
+                borderRadius: 7,
+                padding: "8px 20px",
+                cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search repository..."
+      <div
         style={{
-          width: "100%",
-          padding: "9px 14px",
-          border: "0.5px solid #d1d5db",
-          borderRadius: 8,
+          display: "grid",
+          gridTemplateColumns: "2fr 1fr 1fr 1fr",
+          gap: 12,
           marginBottom: 14,
         }}
-      />
+      >
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name or admission number..."
+          style={{
+            padding: "9px 14px",
+            border: "0.5px solid #d1d5db",
+            borderRadius: 8,
+            fontSize: 13,
+          }}
+        />
+        <select
+          value={filterDept}
+          onChange={(e) => setFilterDept(e.target.value)}
+          style={{
+            padding: "9px 12px",
+            border: "0.5px solid #d1d5db",
+            borderRadius: 8,
+            fontSize: 13,
+          }}
+        >
+          <option value="">All Departments</option>
+          {deptsArr.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={filterYear}
+          onChange={(e) => setFilterYear(e.target.value)}
+          style={{
+            padding: "9px 12px",
+            border: "0.5px solid #d1d5db",
+            borderRadius: 8,
+            fontSize: 13,
+          }}
+        >
+          <option value="">All Years</option>
+          {intakeYears.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
+        <select
+          value={filterSatisfaction}
+          onChange={(e) => setFilterSatisfaction(e.target.value)}
+          style={{
+            padding: "9px 12px",
+            border: "0.5px solid #d1d5db",
+            borderRadius: 8,
+            fontSize: 13,
+          }}
+        >
+          <option value="">All Satisfaction</option>
+          <option value="Happy">Happy ✓</option>
+          <option value="Neutral">Neutral ~</option>
+          <option value="Unhappy">Unhappy ✗</option>
+        </select>
+      </div>
       <div style={{ overflowX: "auto" }}>
         <table
           style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}
@@ -1244,15 +2371,18 @@ function Students({ dbData, onRefresh, headers }) {
 
 // Placeholder components removed in favor of imported specialized pages
 
-function Staff({ dbData, onRefresh, headers }) {
+function Staff({ dbData, onRefresh }) {
   const [showForm, setShowForm] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
     role_title: "Teacher",
     department_id: "",
+    specialisation: "",
   });
   const staffArr = Array.isArray(dbData?.staff) ? dbData.staff : [];
   const depts = Array.isArray(dbData?.departments) ? dbData.departments : [];
@@ -1264,23 +2394,33 @@ function Staff({ dbData, onRefresh, headers }) {
       phone: "",
       role_title: "Teacher",
       department_id: "",
+      specialisation: "",
     });
     setEditingStaff(null);
     setShowForm(false);
+    setError("");
   };
 
-  const handleSave = () => {
-    const method = editingStaff ? "PUT" : "POST";
-    const url = editingStaff ? `/api/staff/${editingStaff.id}` : "/api/staff";
-
-    fetch(url, {
-      method,
-      headers,
-      body: JSON.stringify(form),
-    }).then(() => {
+  const handleSave = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      if (editingStaff) {
+        await api.put(`/staff/${editingStaff.id}`, form);
+      } else {
+        await api.post("/staff", form);
+      }
       onRefresh();
       resetForm();
-    });
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to save staff member. Please check details."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const startEdit = (staff) => {
@@ -1291,16 +2431,19 @@ function Staff({ dbData, onRefresh, headers }) {
       phone: staff?.phone || "",
       role_title: staff?.role_title || "Teacher",
       department_id: staff?.department_id || "",
+      specialisation: staff?.specialisation || "",
     });
     setShowForm(true);
   };
 
-  const handleDelete = (staff) => {
+  const handleDelete = async (staff) => {
     if (!window.confirm("Delete this staff profile?")) return;
-    fetch(`/api/staff/${staff.id}`, {
-      method: "DELETE",
-      headers,
-    }).then(() => onRefresh());
+    try {
+      await api.delete(`/staff/${staff.id}`);
+      onRefresh();
+    } catch (err) {
+      alert("Failed to delete staff member.");
+    }
   };
 
   return (
@@ -1309,8 +2452,12 @@ function Staff({ dbData, onRefresh, headers }) {
         title="Faculty & Structural Staff"
         action="Add Staff Member"
         onAction={() => {
-          setShowForm((s) => !s);
-          if (!showForm) resetForm();
+          if (showForm && !editingStaff) {
+            setShowForm(false);
+          } else {
+            resetForm();
+            setShowForm(true);
+          }
         }}
       />
 
@@ -1324,6 +2471,20 @@ function Staff({ dbData, onRefresh, headers }) {
             marginBottom: 20,
           }}
         >
+          {error && (
+            <div
+              style={{
+                background: "#fee2e2",
+                color: "#dc2626",
+                padding: "8px 12px",
+                borderRadius: 6,
+                fontSize: 12,
+                marginBottom: 14,
+              }}
+            >
+              {error}
+            </div>
+          )}
           <div
             style={{
               display: "grid",
@@ -1458,10 +2619,36 @@ function Staff({ dbData, onRefresh, headers }) {
                 ))}
               </select>
             </div>
+            <div>
+              <label
+                style={{
+                  fontSize: 12,
+                  color: "#374151",
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                Specialisation
+              </label>
+              <input
+                value={form.specialisation}
+                onChange={(e) =>
+                  setForm({ ...form, specialisation: e.target.value })
+                }
+                placeholder="e.g. Mechanical Engineering"
+                style={{
+                  width: "100%",
+                  padding: "7px 10px",
+                  border: "0.5px solid #d1d5db",
+                  borderRadius: 7,
+                }}
+              />
+            </div>
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
             <button
               onClick={handleSave}
+              disabled={loading}
               style={{
                 background: BRAND,
                 color: "#fff",
@@ -1469,25 +2656,29 @@ function Staff({ dbData, onRefresh, headers }) {
                 borderRadius: 7,
                 padding: "8px 20px",
                 cursor: "pointer",
+                opacity: loading ? 0.7 : 1,
               }}
             >
-              {editingStaff ? "Update Staff Member" : "Save Staff Member"}
+              {loading
+                ? "Saving..."
+                : editingStaff
+                ? "Update Staff Member"
+                : "Save Staff Member"}
             </button>
-            {editingStaff && (
-              <button
-                type="button"
-                onClick={resetForm}
-                style={{
-                  background: "#fff",
-                  border: "1px solid #d1d5db",
-                  borderRadius: 7,
-                  padding: "8px 20px",
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={resetForm}
+              disabled={loading}
+              style={{
+                background: "#fff",
+                border: "1px solid #d1d5db",
+                borderRadius: 7,
+                padding: "8px 20px",
+                cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
@@ -1566,54 +2757,99 @@ function Staff({ dbData, onRefresh, headers }) {
   );
 }
 
-function Certifications({ dbData, onRefresh, headers }) {
+function Certifications({ dbData, onRefresh }) {
   const [showForm, setShowForm] = useState(false);
   const [showLevelForm, setShowLevelForm] = useState(false);
   const [selectedCertId, setSelectedCertId] = useState(null);
   const [editingCert, setEditingCert] = useState(null);
   const [editingLevel, setEditingLevel] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const [certForm, setCertForm] = useState({ name: "", acronym: "", description: "" });
-  const [levelForm, setLevelForm] = useState({ name: "", duration_type: "Months", period_count: "", default_modules_count: "1" });
+  const [certForm, setCertForm] = useState({
+    name: "",
+    acronym: "",
+    description: "",
+  });
+  const [levelForm, setLevelForm] = useState({
+    name: "",
+    duration_type: "Months",
+    period_count: "",
+    default_modules_count: "1",
+  });
 
-  const certificationsArr = Array.isArray(dbData?.certifications) ? dbData.certifications : [];
-  const selectedCert = certificationsArr.find(c => c.id === selectedCertId);
+  const certificationsArr = Array.isArray(dbData?.certifications)
+    ? dbData.certifications
+    : [];
+  const selectedCert = certificationsArr.find((c) => c.id === selectedCertId);
 
   const handleCertSave = async () => {
-    const method = editingCert ? "PUT" : "POST";
-    const url = editingCert ? `/api/certifications/${editingCert.id}` : "/api/certifications";
-    await fetch(url, { method, headers, body: JSON.stringify(certForm) });
-    onRefresh();
-    setShowForm(false);
-    setEditingCert(null);
-    setCertForm({ name: "", acronym: "", description: "" });
+    setLoading(true);
+    setError("");
+    try {
+      if (editingCert) {
+        await api.put(`/certifications/${editingCert.id}`, certForm);
+      } else {
+        await api.post("/certifications", certForm);
+      }
+      onRefresh();
+      setShowForm(false);
+      setEditingCert(null);
+      setCertForm({ name: "", acronym: "", description: "" });
+    } catch (err) {
+      setError(
+        err.response?.data?.message || "Failed to save certification authority."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLevelSave = async () => {
-    const method = editingLevel ? "PUT" : "POST";
-    const url = editingLevel ? `/api/certification-levels/${editingLevel.id}` : "/api/certification-levels";
-    await fetch(url, {
-      method,
-      headers,
-      body: JSON.stringify({ ...levelForm, certification_id: selectedCertId })
-    });
-    onRefresh();
-    setShowLevelForm(false);
-    setEditingLevel(null);
-    setLevelForm({ name: "", duration_type: "Months", period_count: "", default_modules_count: "1" });
+    setLoading(true);
+    setError("");
+    try {
+      const payload = { ...levelForm, certification_id: selectedCertId };
+      if (editingLevel) {
+        await api.put(`/certification-levels/${editingLevel.id}`, payload);
+      } else {
+        await api.post("/certification-levels", payload);
+      }
+      onRefresh();
+      setShowLevelForm(false);
+      setEditingLevel(null);
+      setLevelForm({
+        name: "",
+        duration_type: "Months",
+        period_count: "",
+        default_modules_count: "1",
+      });
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to save level details.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const deleteCert = async (id) => {
     if (!window.confirm("Delete this certification authority?")) return;
-    await fetch(`/api/certifications/${id}`, { method: "DELETE", headers });
-    onRefresh();
-    if (selectedCertId === id) setSelectedCertId(null);
+    try {
+      await api.delete(`/certifications/${id}`);
+      onRefresh();
+      if (selectedCertId === id) setSelectedCertId(null);
+    } catch (err) {
+      alert("Failed to delete certification.");
+    }
   };
 
   const deleteLevel = async (id) => {
     if (!window.confirm("Delete this level/grade?")) return;
-    await fetch(`/api/certification-levels/${id}`, { method: "DELETE", headers });
-    onRefresh();
+    try {
+      await api.delete(`/certification-levels/${id}`);
+      onRefresh();
+    } catch (err) {
+      alert("Failed to delete level.");
+    }
   };
 
   return (
@@ -1621,27 +2857,125 @@ function Certifications({ dbData, onRefresh, headers }) {
       <SectionHeader
         title="Certification Authorities"
         action="Add Authority"
-        onAction={() => { setShowForm(true); setEditingCert(null); setCertForm({ name: "", acronym: "", description: "" }); }}
+        onAction={() => {
+          setShowForm(true);
+          setEditingCert(null);
+          setCertForm({ name: "", acronym: "", description: "" });
+        }}
       />
 
       {showForm && (
-        <div style={{ background: "#f0faf6", border: "0.5px solid #a7f3d0", borderRadius: 10, padding: 18, marginBottom: 20 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <input placeholder="Name (e.g. TVET CDACC)" value={certForm.name} onChange={e => setCertForm({ ...certForm, name: e.target.value })} style={{ padding: 8, borderRadius: 7, border: "1px solid #d1d5db" }} />
-            <input placeholder="Acronym (e.g. CDACC)" value={certForm.acronym} onChange={e => setCertForm({ ...certForm, acronym: e.target.value })} style={{ padding: 8, borderRadius: 7, border: "1px solid #d1d5db" }} />
+        <div
+          style={{
+            background: "#f0faf6",
+            border: "0.5px solid #a7f3d0",
+            borderRadius: 10,
+            padding: 18,
+            marginBottom: 20,
+          }}
+        >
+          {error && (
+            <div
+              style={{
+                background: "#fee2e2",
+                color: "#dc2626",
+                padding: "8px 12px",
+                borderRadius: 6,
+                fontSize: 12,
+                marginBottom: 14,
+              }}
+            >
+              {error}
+            </div>
+          )}
+          <div
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
+          >
+            <input
+              placeholder="Name (e.g. TVET CDACC)"
+              value={certForm.name}
+              onChange={(e) =>
+                setCertForm({ ...certForm, name: e.target.value })
+              }
+              style={{
+                padding: 8,
+                borderRadius: 7,
+                border: "1px solid #d1d5db",
+              }}
+            />
+            <input
+              placeholder="Acronym (e.g. CDACC)"
+              value={certForm.acronym}
+              onChange={(e) =>
+                setCertForm({ ...certForm, acronym: e.target.value })
+              }
+              style={{
+                padding: 8,
+                borderRadius: 7,
+                border: "1px solid #d1d5db",
+              }}
+            />
           </div>
-          <textarea placeholder="Description..." value={certForm.description} onChange={e => setCertForm({ ...certForm, description: e.target.value })} style={{ width: "100%", padding: 8, borderRadius: 7, border: "1px solid #d1d5db", marginTop: 12 }} />
+          <textarea
+            placeholder="Description..."
+            value={certForm.description}
+            onChange={(e) =>
+              setCertForm({ ...certForm, description: e.target.value })
+            }
+            style={{
+              width: "100%",
+              padding: 8,
+              borderRadius: 7,
+              border: "1px solid #d1d5db",
+              marginTop: 12,
+            }}
+          />
           <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-            <button onClick={handleCertSave} style={{ background: BRAND, color: "#fff", border: "none", borderRadius: 7, padding: "8px 20px", cursor: "pointer" }}>Save Authority</button>
-            <button onClick={() => setShowForm(false)} style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 7, padding: "8px 20px", cursor: "pointer" }}>Cancel</button>
+            <button
+              onClick={handleCertSave}
+              disabled={loading}
+              style={{
+                background: BRAND,
+                color: "#fff",
+                border: "none",
+                borderRadius: 7,
+                padding: "8px 20px",
+                cursor: "pointer",
+                opacity: loading ? 0.7 : 1,
+              }}
+            >
+              {loading ? "Saving..." : "Save Authority"}
+            </button>
+            <button
+              onClick={() => setShowForm(false)}
+              disabled={loading}
+              style={{
+                background: "#fff",
+                border: "1px solid #d1d5db",
+                borderRadius: 7,
+                padding: "8px 20px",
+                cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: 20 }}>
+      <div
+        style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: 20 }}
+      >
         {/* Left: Cert List */}
-        <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
-          {certificationsArr.map(cert => (
+        <div
+          style={{
+            background: "#fff",
+            border: "0.5px solid #e5e7eb",
+            borderRadius: 12,
+            overflow: "hidden",
+          }}
+        >
+          {certificationsArr.map((cert) => (
             <div
               key={cert.id}
               onClick={() => setSelectedCertId(cert.id)}
@@ -1649,100 +2983,378 @@ function Certifications({ dbData, onRefresh, headers }) {
                 padding: "12px 16px",
                 borderBottom: "0.5px solid #f3f4f6",
                 cursor: "pointer",
-                background: selectedCertId === cert.id ? BRAND_LIGHT : "transparent"
+                background:
+                  selectedCertId === cert.id ? BRAND_LIGHT : "transparent",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontWeight: 600 }}>{cert.acronym || cert.name}</div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <div style={{ fontWeight: 600 }}>
+                  {cert.acronym || cert.name}
+                </div>
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={(e) => { 
-                    e.stopPropagation(); 
-                    setEditingCert(cert); 
-                    setCertForm({
-                      name: cert.name || "",
-                      acronym: cert.acronym || "",
-                      description: cert.description || ""
-                    }); 
-                    setShowForm(true); 
-                  }} style={{ fontSize: 10, color: BRAND, border: "none", background: "none", cursor: "pointer" }}>Edit</button>
-                  <button onClick={(e) => { e.stopPropagation(); deleteCert(cert.id); }} style={{ fontSize: 10, color: "#dc2626", border: "none", background: "none", cursor: "pointer" }}>Delete</button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingCert(cert);
+                      setCertForm({
+                        name: cert.name || "",
+                        acronym: cert.acronym || "",
+                        description: cert.description || "",
+                      });
+                      setShowForm(true);
+                    }}
+                    style={{
+                      fontSize: 10,
+                      color: BRAND,
+                      border: "none",
+                      background: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteCert(cert.id);
+                    }}
+                    style={{
+                      fontSize: 10,
+                      color: "#dc2626",
+                      border: "none",
+                      background: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
               <div style={{ fontSize: 11, color: "#6b7280" }}>{cert.name}</div>
             </div>
           ))}
-          {certificationsArr.length === 0 && <div style={{ padding: 20, textAlign: "center", color: "#9ca3af" }}>No authorities defined.</div>}
+          {certificationsArr.length === 0 && (
+            <div style={{ padding: 20, textAlign: "center", color: "#9ca3af" }}>
+              No authorities defined.
+            </div>
+          )}
         </div>
 
         {/* Right: Levels List */}
-        <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 12, padding: 16 }}>
+        <div
+          style={{
+            background: "#fff",
+            border: "0.5px solid #e5e7eb",
+            borderRadius: 12,
+            padding: 16,
+          }}
+        >
           {selectedCert ? (
             <>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <h4 style={{ margin: 0 }}>Levels for {selectedCert.acronym || selectedCert.name}</h4>
-                <button onClick={() => { setShowLevelForm(true); setEditingLevel(null); setLevelForm({ name: "", duration_type: "Months", period_count: "", default_modules_count: "1" }); }} style={{ background: BRAND, color: "#fff", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>+ Add Level / Grade</button>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 16,
+                }}
+              >
+                <h4 style={{ margin: 0 }}>
+                  Levels for {selectedCert.acronym || selectedCert.name}
+                </h4>
+                <button
+                  onClick={() => {
+                    setShowLevelForm(true);
+                    setEditingLevel(null);
+                    setLevelForm({
+                      name: "",
+                      duration_type: "Months",
+                      period_count: "",
+                      default_modules_count: "1",
+                    });
+                  }}
+                  style={{
+                    background: BRAND,
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 6,
+                    padding: "4px 10px",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  + Add Level / Grade
+                </button>
               </div>
 
               {showLevelForm && (
-                <div style={{ background: "#f9fafb", padding: 12, borderRadius: 8, marginBottom: 16, border: "0.5px solid #e5e7eb" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr", gap: 8 }}>
+                <div
+                  style={{
+                    background: "#f9fafb",
+                    padding: 12,
+                    borderRadius: 8,
+                    marginBottom: 16,
+                    border: "0.5px solid #e5e7eb",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1.5fr 1fr 1fr 1fr",
+                      gap: 8,
+                    }}
+                  >
                     <div>
-                      <label style={{ fontSize: 10, color: "#6b7280", display: "block", marginBottom: 2 }}>Level Name</label>
-                      <input placeholder="Level 3 / GTT 1" value={levelForm.name} onChange={e => setLevelForm({ ...levelForm, name: e.target.value })} style={{ width: "100%", padding: 6, borderRadius: 5, border: "1px solid #d1d5db", fontSize: 12, boxSizing: "border-box" }} />
+                      <label
+                        style={{
+                          fontSize: 10,
+                          color: "#6b7280",
+                          display: "block",
+                          marginBottom: 2,
+                        }}
+                      >
+                        Level Name
+                      </label>
+                      <input
+                        placeholder="Level 3 / GTT 1"
+                        value={levelForm.name}
+                        onChange={(e) =>
+                          setLevelForm({ ...levelForm, name: e.target.value })
+                        }
+                        style={{
+                          width: "100%",
+                          padding: 6,
+                          borderRadius: 5,
+                          border: "1px solid #d1d5db",
+                          fontSize: 12,
+                          boxSizing: "border-box",
+                        }}
+                      />
                     </div>
                     <div>
-                      <label style={{ fontSize: 10, color: "#6b7280", display: "block", marginBottom: 2 }}>Duration Type</label>
-                      <select value={levelForm.duration_type} onChange={e => setLevelForm({ ...levelForm, duration_type: e.target.value })} style={{ width: "100%", padding: 6, borderRadius: 5, border: "1px solid #d1d5db", fontSize: 12 }}>
+                      <label
+                        style={{
+                          fontSize: 10,
+                          color: "#6b7280",
+                          display: "block",
+                          marginBottom: 2,
+                        }}
+                      >
+                        Duration Type
+                      </label>
+                      <select
+                        value={levelForm.duration_type}
+                        onChange={(e) =>
+                          setLevelForm({
+                            ...levelForm,
+                            duration_type: e.target.value,
+                          })
+                        }
+                        style={{
+                          width: "100%",
+                          padding: 6,
+                          borderRadius: 5,
+                          border: "1px solid #d1d5db",
+                          fontSize: 12,
+                        }}
+                      >
                         <option>Years</option>
                         <option>Months</option>
                         <option>Weeks</option>
                       </select>
                     </div>
                     <div>
-                      <label style={{ fontSize: 10, color: "#6b7280", display: "block", marginBottom: 2 }}>Period Count</label>
-                      <input type="number" placeholder="Count" value={levelForm.period_count} onChange={e => setLevelForm({ ...levelForm, period_count: e.target.value })} style={{ width: "100%", padding: 6, borderRadius: 5, border: "1px solid #d1d5db", fontSize: 12, boxSizing: "border-box" }} />
+                      <label
+                        style={{
+                          fontSize: 10,
+                          color: "#6b7280",
+                          display: "block",
+                          marginBottom: 2,
+                        }}
+                      >
+                        Period Count
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="Count"
+                        value={levelForm.period_count}
+                        onChange={(e) =>
+                          setLevelForm({
+                            ...levelForm,
+                            period_count: e.target.value,
+                          })
+                        }
+                        style={{
+                          width: "100%",
+                          padding: 6,
+                          borderRadius: 5,
+                          border: "1px solid #d1d5db",
+                          fontSize: 12,
+                          boxSizing: "border-box",
+                        }}
+                      />
                     </div>
                     <div>
-                      <label style={{ fontSize: 10, color: "#6b7280", display: "block", marginBottom: 2 }}>Modules</label>
-                      <input type="number" placeholder="Modules" value={levelForm.default_modules_count} onChange={e => setLevelForm({ ...levelForm, default_modules_count: e.target.value })} style={{ width: "100%", padding: 6, borderRadius: 5, border: "1px solid #d1d5db", fontSize: 12, boxSizing: "border-box" }} />
+                      <label
+                        style={{
+                          fontSize: 10,
+                          color: "#6b7280",
+                          display: "block",
+                          marginBottom: 2,
+                        }}
+                      >
+                        Modules
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="Modules"
+                        value={levelForm.default_modules_count}
+                        onChange={(e) =>
+                          setLevelForm({
+                            ...levelForm,
+                            default_modules_count: e.target.value,
+                          })
+                        }
+                        style={{
+                          width: "100%",
+                          padding: 6,
+                          borderRadius: 5,
+                          border: "1px solid #d1d5db",
+                          fontSize: 12,
+                          boxSizing: "border-box",
+                        }}
+                      />
                     </div>
                   </div>
                   <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
-                    <button onClick={handleLevelSave} style={{ background: BRAND, color: "#fff", border: "none", borderRadius: 5, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>Save Level</button>
-                    <button onClick={() => setShowLevelForm(false)} style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 5, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>Cancel</button>
+                    <button
+                      onClick={handleLevelSave}
+                      disabled={loading}
+                      style={{
+                        background: BRAND,
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 5,
+                        padding: "4px 12px",
+                        fontSize: 11,
+                        cursor: "pointer",
+                        opacity: loading ? 0.7 : 1,
+                      }}
+                    >
+                      {loading ? "Saving..." : "Save Level"}
+                    </button>
+                    <button
+                      onClick={() => setShowLevelForm(false)}
+                      disabled={loading}
+                      style={{
+                        background: "#fff",
+                        border: "1px solid #d1d5db",
+                        borderRadius: 5,
+                        padding: "4px 12px",
+                        fontSize: 11,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </div>
               )}
 
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {(selectedCert.levels || []).map(lvl => (
-                  <div key={lvl.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f9fafb", borderRadius: 8, border: "0.5px solid #f3f4f6" }}>
+                {(selectedCert.levels || []).map((lvl) => (
+                  <div
+                    key={lvl.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "8px 12px",
+                      background: "#f9fafb",
+                      borderRadius: 8,
+                      border: "0.5px solid #f3f4f6",
+                    }}
+                  >
                     <div>
-                      <div style={{ fontWeight: 500, fontSize: 13 }}>{lvl.name}</div>
-                      <div style={{ fontSize: 11, color: "#6b7280" }}>Period: {lvl.period_count} {lvl.duration_type} · Modules: {lvl.default_modules_count}</div>
+                      <div style={{ fontWeight: 500, fontSize: 13 }}>
+                        {lvl.name}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#6b7280" }}>
+                        Period: {lvl.period_count} {lvl.duration_type} ·
+                        Modules: {lvl.default_modules_count}
+                      </div>
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => { 
-                        setEditingLevel(lvl); 
-                        setLevelForm({
-                          name: lvl.name || "",
-                          duration_type: lvl.duration_type || "Months",
-                          period_count: lvl.period_count || "",
-                          default_modules_count: lvl.default_modules_count || ""
-                        }); 
-                        setShowLevelForm(true); 
-                      }} style={{ fontSize: 10, color: BRAND, border: "none", background: "none", cursor: "pointer" }}>Edit</button>
-                      <button onClick={() => deleteLevel(lvl.id)} style={{ fontSize: 10, color: "#dc2626", border: "none", background: "none", cursor: "pointer" }}>Delete</button>
+                      <button
+                        onClick={() => {
+                          setEditingLevel(lvl);
+                          setLevelForm({
+                            name: lvl.name || "",
+                            duration_type: lvl.duration_type || "Months",
+                            period_count: lvl.period_count || "",
+                            default_modules_count:
+                              lvl.default_modules_count || "",
+                          });
+                          setShowLevelForm(true);
+                        }}
+                        style={{
+                          fontSize: 10,
+                          color: BRAND,
+                          border: "none",
+                          background: "none",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => deleteLevel(lvl.id)}
+                        style={{
+                          fontSize: 10,
+                          color: "#dc2626",
+                          border: "none",
+                          background: "none",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                 ))}
-                {(selectedCert.levels || []).length === 0 && <div style={{ textAlign: "center", color: "#9ca3af", padding: 20, fontSize: 12 }}>No levels defined for this authority yet.</div>}
+                {(selectedCert.levels || []).length === 0 && (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      color: "#9ca3af",
+                      padding: 20,
+                      fontSize: 12,
+                    }}
+                  >
+                    No levels defined for this authority yet.
+                  </div>
+                )}
               </div>
             </>
           ) : (
-            <div style={{ textAlign: "center", color: "#9ca3af", padding: 40, border: "1px dashed #e5e7eb", borderRadius: 10 }}>
+            <div
+              style={{
+                textAlign: "center",
+                color: "#9ca3af",
+                padding: 40,
+                border: "1px dashed #e5e7eb",
+                borderRadius: 10,
+              }}
+            >
               <div style={{ fontSize: 24, marginBottom: 10 }}>📜</div>
-              Select a certification authority from the list to manage its specific levels, modules and study periods.
+              Select a certification authority from the list to manage its
+              specific levels, modules and study periods.
             </div>
           )}
         </div>
@@ -1760,11 +3372,14 @@ export default function App() {
     localStorage.getItem("user_type") || "staff",
   );
 
-  const requestHeaders = useMemo(() => ({
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-    ...(token ? { "Authorization": `Bearer ${token}` } : {})
-  }), [token]);
+  const requestHeaders = useMemo(
+    () => ({
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    }),
+    [token],
+  );
 
   const [loginType, setLoginType] = useState("student");
   const [identifier, setIdentifier] = useState("");
@@ -1838,10 +3453,11 @@ export default function App() {
       ]);
 
       const newState = {
-        user: (userRes?.data?.data || userRes?.data) || {
-          name: "Authorized Officer",
-          email: "management@magotvtc.ac.ke",
-        },
+        user: userRes?.data?.data ||
+          userRes?.data || {
+            name: "Authorized Officer",
+            email: "management@magotvtc.ac.ke",
+          },
         departments: unpack(deptsRes?.data),
         courses: unpack(coursesRes?.data),
         students: unpack(studentsRes?.data),
@@ -2023,17 +3639,13 @@ export default function App() {
       <Route
         path="/"
         element={
-          !token ? (
-            <Landing
-              onPortalLogin={() => {
-                navigate("/login");
-              }}
-            />
-          ) : userType === "student" ? (
-            <Navigate to="/student" replace />
-          ) : (
-            <Navigate to="/dashboard" replace />
-          )
+          <Landing
+            onPortalLogin={() => {
+              if (!token) navigate("/login");
+              else if (userType === "student") navigate("/student");
+              else navigate("/dashboard");
+            }}
+          />
         }
       />
       <Route
