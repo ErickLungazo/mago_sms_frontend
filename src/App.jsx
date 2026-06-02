@@ -16,6 +16,9 @@ import Interventions from "./components/career/Interventions";
 import JobPlacement from "./components/career/JobPlacement";
 import StudentDashboard from "./pages/StudentDashboard";
 
+// Fallback to prevent ReferenceError: error is not defined in older components
+const error = "";
+
 // ── CONFIGURATION CONSTANTS ──────────────────────────────────────────────────
 const BRAND = "#0a6e4e";
 const BRAND_LIGHT = "#e6f4ef";
@@ -250,6 +253,7 @@ function Dashboard({ dbData }) {
       {/* Control Bar - No Print */}
       <div
         data-no-print
+        className="flex flex-col gap-4 mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex-wrap sm:p-5"
         style={{
           display: "flex",
           flexDirection: "column",
@@ -263,6 +267,7 @@ function Dashboard({ dbData }) {
         }}
       >
         <div
+          className="flex flex-wrap items-center gap-3"
           style={{
             display: "flex",
             gap: 12,
@@ -305,6 +310,7 @@ function Dashboard({ dbData }) {
         </div>
 
         <div
+          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
@@ -413,7 +419,10 @@ function Dashboard({ dbData }) {
         )}
       </div>
 
-      <div id="dashboard-print-area">
+      <div
+        id="dashboard-print-area"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+      >
         {/* Header */}
         <div style={{ marginBottom: 20 }}>
           <h1
@@ -437,13 +446,13 @@ function Dashboard({ dbData }) {
 
         {/* Key Metrics Row 1 */}
         <div
+          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4 mb-6 print-section"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
             gap: 12,
             marginBottom: 24,
           }}
-          className="print-section"
         >
           <StatCard
             label="Total Students"
@@ -481,13 +490,13 @@ function Dashboard({ dbData }) {
 
         {/* Satisfaction & Demographics Row */}
         <div
+          className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6 print-section"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
             gap: 16,
             marginBottom: 24,
           }}
-          className="print-section"
         >
           {/* Satisfaction */}
           <div
@@ -613,25 +622,29 @@ function Dashboard({ dbData }) {
             ))}
           </div>
 
-          {/* Students by Department */}
+        </div>
+
+        {/* Students by Department */}
+        <div
+          style={{
+            background: "#fff",
+            border: "0.5px solid #e5e7eb",
+            borderRadius: 12,
+            padding: "18px 20px",
+            marginBottom: 24,
+          }}
+          className="print-section"
+        >
           <div
             style={{
-              background: "#fff",
-              border: "0.5px solid #e5e7eb",
-              borderRadius: 12,
-              padding: "18px 20px",
+              fontSize: 14,
+              fontWeight: 700,
+              color: "#111827",
+              marginBottom: 16,
             }}
           >
-            <div
-              style={{
-                fontSize: 14,
-                fontWeight: 700,
-                color: "#111827",
-                marginBottom: 16,
-              }}
-            >
-              🏛️ Students by Department
-            </div>
+            🏛️ Students by Department
+          </div>
             {deptsArr.length === 0 ? (
               <div style={{ fontSize: 12, color: "#9ca3af" }}>
                 No departments registered.
@@ -641,7 +654,9 @@ function Dashboard({ dbData }) {
                 const count = filteredStudents.filter(
                   (s) =>
                     String(
-                      s?.course?.department_id || s?.course?.department?.id || "",
+                      s?.course?.department_id ||
+                        s?.course?.department?.id ||
+                        "",
                     ) === String(d?.id) || s?.dept === d?.name,
                 ).length;
                 const pctOfTotal =
@@ -655,8 +670,10 @@ function Dashboard({ dbData }) {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
+                        flexWrap: "wrap",
                         fontSize: 12,
                         marginBottom: 4,
+                        gap: 12,
                       }}
                     >
                       <span style={{ color: "#374151", fontWeight: 500 }}>
@@ -688,7 +705,6 @@ function Dashboard({ dbData }) {
               })
             )}
           </div>
-        </div>
 
         {/* Top Courses */}
         {courseStats.length > 0 && (
@@ -713,6 +729,7 @@ function Dashboard({ dbData }) {
               📚 Top 5 Courses by Enrollment
             </div>
             <div
+              className="grid grid-cols-1 sm:grid-cols-2 gap-4"
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
@@ -843,7 +860,7 @@ function Dashboard({ dbData }) {
               table { font-size: 11px !important; }
               th, td { padding: 8px 6px !important; }
               .badge-print { border: 1px solid #ccc !important; padding: 1px 4px !important; }
-              .only-print-ledger > *:not(#student-report-ledger) { display: none !important; }
+              .only-print-ledger { display: none !important; }
               .only-print-ledger #student-report-ledger { display: block !important; width: 100% !important; position: absolute; top: 0; left: 0; }
             }
             .no-print-table-header { display: none; }
@@ -907,7 +924,7 @@ function Dashboard({ dbData }) {
           >
             <span>📜 Student Details Ledger</span>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 11, color: "#6b7280", fontWeight: 500 }}>
+              <span className="text-xs text-slate-500 font-medium">
                 {filteredStudents.length} Records Found
               </span>
               <button
@@ -932,8 +949,9 @@ function Dashboard({ dbData }) {
             </div>
           </div>
 
-          <div style={{ overflowX: "auto" }}>
+          <div className="overflow-x-auto">
             <table
+              className="min-w-[720px] w-full"
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
@@ -1051,8 +1069,8 @@ function Dashboard({ dbData }) {
 function Departments({ dbData, onRefresh }) {
   const [showForm, setShowForm] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [compLoading, setCompLoading] = useState(false);
+  const [compError, setCompError] = useState("");
   const [form, setForm] = useState({
     name: "",
     code: "",
@@ -1066,12 +1084,12 @@ function Departments({ dbData, onRefresh }) {
     setForm({ name: "", code: "", hod_id: "", color: "" });
     setEditingDepartment(null);
     setShowForm(false);
-    setError("");
+    setCompError("");
   };
 
   const handleSave = async () => {
-    setLoading(true);
-    setError("");
+    setCompLoading(true);
+    setCompError("");
     try {
       const payload = {
         name: form.name,
@@ -1088,13 +1106,13 @@ function Departments({ dbData, onRefresh }) {
       onRefresh();
       resetForm();
     } catch (err) {
-      setError(
+      setCompError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to save department details."
+          "Failed to save department details.",
       );
     } finally {
-      setLoading(false);
+      setCompLoading(false);
     }
   };
 
@@ -1143,7 +1161,7 @@ function Departments({ dbData, onRefresh }) {
             marginBottom: 20,
           }}
         >
-          {error && (
+          {compError && (
             <div
               style={{
                 background: "#fee2e2",
@@ -1154,7 +1172,7 @@ function Departments({ dbData, onRefresh }) {
                 marginBottom: 14,
               }}
             >
-              {error}
+              {compError}
             </div>
           )}
           <div
@@ -1280,7 +1298,7 @@ function Departments({ dbData, onRefresh }) {
           <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
             <button
               onClick={handleSave}
-              disabled={loading}
+              disabled={compLoading}
               style={{
                 background: BRAND,
                 color: "#fff",
@@ -1288,19 +1306,19 @@ function Departments({ dbData, onRefresh }) {
                 borderRadius: 7,
                 padding: "8px 20px",
                 cursor: "pointer",
-                opacity: loading ? 0.7 : 1,
+                opacity: compLoading ? 0.7 : 1,
               }}
             >
-              {loading
+              {compLoading
                 ? "Processing..."
                 : editingDepartment
-                ? "Update Department"
-                : "Save Department"}
+                  ? "Update Department"
+                  : "Save Department"}
             </button>
             <button
               type="button"
               onClick={resetForm}
-              disabled={loading}
+              disabled={compLoading}
               style={{
                 background: "#fff",
                 border: "1px solid #d1d5db",
@@ -1398,8 +1416,8 @@ function Departments({ dbData, onRefresh }) {
 function Courses({ dbData, onRefresh }) {
   const [showForm, setShowForm] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [compLoading, setCompLoading] = useState(false);
+  const [compError, setCompError] = useState("");
   const [form, setForm] = useState({
     department_id: "",
     certification_id: "",
@@ -1430,12 +1448,12 @@ function Courses({ dbData, onRefresh }) {
     });
     setEditingCourse(null);
     setShowForm(false);
-    setError("");
+    setCompError("");
   };
 
   const handleSave = async () => {
-    setLoading(true);
-    setError("");
+    setCompLoading(true);
+    setCompError("");
     try {
       const payload = {
         department_id: form.department_id,
@@ -1452,9 +1470,9 @@ function Courses({ dbData, onRefresh }) {
       onRefresh();
       resetForm();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to save course.");
+      setCompError(err.response?.data?.message || "Failed to save course.");
     } finally {
-      setLoading(false);
+      setCompLoading(false);
     }
   };
 
@@ -1522,7 +1540,7 @@ function Courses({ dbData, onRefresh }) {
             marginBottom: 20,
           }}
         >
-          {error && (
+          {compError && (
             <div
               style={{
                 background: "#fee2e2",
@@ -1533,7 +1551,7 @@ function Courses({ dbData, onRefresh }) {
                 marginBottom: 14,
               }}
             >
-              {error}
+              {compError}
             </div>
           )}
           <div
@@ -1713,7 +1731,7 @@ function Courses({ dbData, onRefresh }) {
             <button
               onClick={handleSave}
               disabled={
-                loading ||
+                compLoading ||
                 !form.department_id ||
                 !form.certification_level_id ||
                 !form.name
@@ -1726,7 +1744,7 @@ function Courses({ dbData, onRefresh }) {
                 padding: "8px 20px",
                 cursor: "pointer",
                 opacity:
-                  loading ||
+                  compLoading ||
                   !form.department_id ||
                   !form.certification_level_id ||
                   !form.name
@@ -1734,16 +1752,16 @@ function Courses({ dbData, onRefresh }) {
                     : 1,
               }}
             >
-              {loading
+              {compLoading
                 ? "Processing..."
                 : editingCourse
-                ? "Update Course"
-                : "Save Course"}
+                  ? "Update Course"
+                  : "Save Course"}
             </button>
             <button
               type="button"
               onClick={resetForm}
-              disabled={loading}
+              disabled={compLoading}
               style={{
                 background: "#fff",
                 border: "1px solid #d1d5db",
@@ -1858,12 +1876,23 @@ function Courses({ dbData, onRefresh }) {
 }
 
 function Students({ dbData, onRefresh, headers }) {
+  const [compLoading, setCompLoading] = useState(false);
+  const [compError, setCompError] = useState("");
   const [search, setSearch] = useState("");
   const [filterDept, setFilterDept] = useState("");
   const [filterYear, setFilterYear] = useState("");
   const [filterSatisfaction, setFilterSatisfaction] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
+
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(50);
+  const [paginatedData, setPaginatedData] = useState({
+    data: [],
+    meta: { last_page: 1, total: 0 },
+  });
+
   const [form, setForm] = useState({
     id: "",
     course_id: "",
@@ -1874,6 +1903,7 @@ function Students({ dbData, onRefresh, headers }) {
     gender: "Male",
     intake_year: new Date().getFullYear().toString(),
   });
+
   const studentsArr = Array.isArray(dbData?.students) ? dbData.students : [];
   const coursesArr = Array.isArray(dbData?.courses) ? dbData.courses : [];
   const deptsArr = Array.isArray(dbData?.departments) ? dbData.departments : [];
@@ -1884,33 +1914,43 @@ function Students({ dbData, onRefresh, headers }) {
     .sort()
     .reverse();
 
-  const filtered = studentsArr.filter((s) => {
-    // Search filter
-    const matchesSearch =
-      s?.name?.toLowerCase().includes(search.toLowerCase()) ||
-      s?.admission_number?.toLowerCase().includes(search.toLowerCase());
-    if (!matchesSearch) return false;
+  // Fetch paginated students
+  const fetchStudents = useCallback(async () => {
+    setCompLoading(true);
+    try {
+      const params = {
+        paginate: true,
+        page,
+        per_page: perPage,
+        search,
+        department_id: filterDept,
+        intake_year: filterYear,
+        satisfaction: filterSatisfaction,
+      };
+      const res = await api.get("/students", { params });
+      // The api.js interceptor already unwraps response.data.data
+      const result = res.data;
+      if (result) {
+        setPaginatedData({
+          data: result.data || [],
+          meta: {
+            last_page: result.last_page || 1,
+            total: result.total || 0,
+          },
+        });
+      }
+    } catch (err) {
+      setCompError("Failed to fetch students.");
+    } finally {
+      setCompLoading(false);
+    }
+  }, [page, perPage, search, filterDept, filterYear, filterSatisfaction]);
 
-    // Dept filter
-    if (
-      filterDept &&
-      String(s?.course?.department_id || s?.course?.department?.id || "") !==
-        String(filterDept)
-    )
-      return false;
+  useEffect(() => {
+    fetchStudents();
+  }, [fetchStudents]);
 
-    // Year filter
-    if (filterYear && s?.intake_year?.toString() !== filterYear) return false;
-
-    // Satisfaction filter
-    if (
-      filterSatisfaction &&
-      (s?.satisfaction || "Happy") !== filterSatisfaction
-    )
-      return false;
-
-    return true;
-  });
+  const filtered = paginatedData.data;
 
   const resetForm = () => {
     setForm({
@@ -1925,6 +1965,7 @@ function Students({ dbData, onRefresh, headers }) {
     });
     setEditingStudent(null);
     setShowForm(false);
+    setCompError("");
   };
 
   const handleSave = async () => {
@@ -1935,8 +1976,7 @@ function Students({ dbData, onRefresh, headers }) {
     // Only apply to new students or when changing the year of an existing student
     const isNew = !editingStudent;
     const yearChanged =
-      editingStudent &&
-      parseInt(editingStudent.intake_year, 10) !== intakeYear;
+      editingStudent && parseInt(editingStudent.intake_year, 10) !== intakeYear;
 
     if ((isNew || yearChanged) && intakeYear < currentYear - 3) {
       alert(
@@ -1947,8 +1987,8 @@ function Students({ dbData, onRefresh, headers }) {
       return;
     }
 
-    setLoading(true);
-    setError("");
+    setCompLoading(true);
+    setCompError("");
     try {
       const payload = editingStudent
         ? {
@@ -1981,11 +2021,14 @@ function Students({ dbData, onRefresh, headers }) {
         await api.post("/students", payload);
       }
       onRefresh();
+      fetchStudents();
       resetForm();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to save student record.");
+      setCompError(
+        err.response?.data?.message || "Failed to save student record.",
+      );
     } finally {
-      setLoading(false);
+      setCompLoading(false);
     }
   };
 
@@ -2010,9 +2053,15 @@ function Students({ dbData, onRefresh, headers }) {
     try {
       await api.delete(`/students/${student.id}`);
       onRefresh();
+      fetchStudents();
     } catch (err) {
       alert("Failed to delete student record.");
     }
+  };
+
+  const handleFilterChange = (setter) => (val) => {
+    setter(val);
+    setPage(1);
   };
 
   return (
@@ -2039,7 +2088,7 @@ function Students({ dbData, onRefresh, headers }) {
             marginBottom: 20,
           }}
         >
-          {error && (
+          {compError && (
             <div
               style={{
                 background: "#fee2e2",
@@ -2050,7 +2099,7 @@ function Students({ dbData, onRefresh, headers }) {
                 marginBottom: 14,
               }}
             >
-              {error}
+              {compError}
             </div>
           )}
           <div
@@ -2162,7 +2211,7 @@ function Students({ dbData, onRefresh, headers }) {
           <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
             <button
               onClick={handleSave}
-              disabled={loading}
+              disabled={compLoading}
               style={{
                 background: BRAND,
                 color: "#fff",
@@ -2170,19 +2219,19 @@ function Students({ dbData, onRefresh, headers }) {
                 borderRadius: 7,
                 padding: "8px 20px",
                 cursor: "pointer",
-                opacity: loading ? 0.7 : 1,
+                opacity: compLoading ? 0.7 : 1,
               }}
             >
-              {loading
+              {compLoading
                 ? "Processing..."
                 : editingStudent
-                ? "Update Record"
-                : "Commit Record"}
+                  ? "Update Record"
+                  : "Commit Record"}
             </button>
             <button
               type="button"
               onClick={resetForm}
-              disabled={loading}
+              disabled={compLoading}
               style={{
                 background: "#fff",
                 border: "1px solid #d1d5db",
@@ -2206,7 +2255,7 @@ function Students({ dbData, onRefresh, headers }) {
       >
         <input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => handleFilterChange(setSearch)(e.target.value)}
           placeholder="Search by name or admission number..."
           style={{
             padding: "9px 14px",
@@ -2217,7 +2266,7 @@ function Students({ dbData, onRefresh, headers }) {
         />
         <select
           value={filterDept}
-          onChange={(e) => setFilterDept(e.target.value)}
+          onChange={(e) => handleFilterChange(setFilterDept)(e.target.value)}
           style={{
             padding: "9px 12px",
             border: "0.5px solid #d1d5db",
@@ -2234,7 +2283,7 @@ function Students({ dbData, onRefresh, headers }) {
         </select>
         <select
           value={filterYear}
-          onChange={(e) => setFilterYear(e.target.value)}
+          onChange={(e) => handleFilterChange(setFilterYear)(e.target.value)}
           style={{
             padding: "9px 12px",
             border: "0.5px solid #d1d5db",
@@ -2251,7 +2300,9 @@ function Students({ dbData, onRefresh, headers }) {
         </select>
         <select
           value={filterSatisfaction}
-          onChange={(e) => setFilterSatisfaction(e.target.value)}
+          onChange={(e) =>
+            handleFilterChange(setFilterSatisfaction)(e.target.value)
+          }
           style={{
             padding: "9px 12px",
             border: "0.5px solid #d1d5db",
@@ -2265,105 +2316,219 @@ function Students({ dbData, onRefresh, headers }) {
           <option value="Unhappy">Unhappy ✗</option>
         </select>
       </div>
-      <div style={{ overflowX: "auto" }}>
-        <table
-          style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}
-        >
-          <thead>
-            <tr style={{ background: "#f9fafb" }}>
-              {[
-                "Adm No.",
-                "Name",
-                "County",
-                "Contact",
-                "Satisfaction",
-                "Status",
-                "Actions",
-              ].map((h) => (
-                <th
-                  key={h}
-                  style={{
-                    padding: "10px 14px",
-                    textAlign: "left",
-                    color: "#6b7280",
-                    borderBottom: "0.5px solid #e5e7eb",
-                  }}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={7}
-                  style={{ padding: 14, textAlign: "center", color: "#9ca3af" }}
-                >
-                  No student records discovered.
-                </td>
+
+      <div
+        style={{
+          background: "#fff",
+          border: "0.5px solid #e5e7eb",
+          borderRadius: 12,
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ overflowX: "auto" }}>
+          <table
+            style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}
+          >
+            <thead>
+              <tr style={{ background: "#f9fafb" }}>
+                {[
+                  "Adm No.",
+                  "Name",
+                  "County",
+                  "Contact",
+                  "Satisfaction",
+                  "Status",
+                  "Actions",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    style={{
+                      padding: "10px 14px",
+                      textAlign: "left",
+                      color: "#6b7280",
+                      borderBottom: "0.5px solid #e5e7eb",
+                    }}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ) : (
-              filtered.map((s) => (
-                <tr key={s?.id} style={{ borderBottom: "0.5px solid #f3f4f6" }}>
-                  <td style={{ padding: "10px 14px", fontFamily: "monospace" }}>
-                    {s?.admission_number || `SIS-${s?.id}`}
-                  </td>
-                  <td style={{ padding: "10px 14px", fontWeight: 500 }}>
-                    {s?.name}
-                  </td>
-                  <td style={{ padding: "10px 14px" }}>{s?.county || "—"}</td>
-                  <td style={{ padding: "10px 14px" }}>{s?.phone || "—"}</td>
-                  <td style={{ padding: "10px 14px" }}>
-                    <Badge
-                      label={s?.satisfaction || "Happy"}
-                      color={SATISFACTION_COLORS[s?.satisfaction || "Happy"]}
-                      bg={SATISFACTION_BG[s?.satisfaction || "Happy"]}
-                    />
-                  </td>
-                  <td style={{ padding: "10px 14px" }}>
-                    <Badge
-                      label={s?.status || "Active"}
-                      color="#16a34a"
-                      bg="#dcfce7"
-                    />
-                  </td>
-                  <td style={{ padding: "10px 14px", display: "flex", gap: 6 }}>
-                    <button
-                      type="button"
-                      onClick={() => startEdit(s)}
-                      style={{
-                        background: "#eef2ff",
-                        border: "none",
-                        borderRadius: 6,
-                        color: "#1d4ed8",
-                        padding: "6px 10px",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(s)}
-                      style={{
-                        background: "#fee2e2",
-                        border: "none",
-                        borderRadius: 6,
-                        color: "#b91c1c",
-                        padding: "6px 10px",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Delete
-                    </button>
+            </thead>
+            <tbody>
+              {compLoading ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    style={{ padding: 40, textAlign: "center", color: BRAND }}
+                  >
+                    Syncing students ledger...
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    style={{
+                      padding: 14,
+                      textAlign: "center",
+                      color: "#9ca3af",
+                    }}
+                  >
+                    No student records discovered.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((s) => (
+                  <tr
+                    key={s?.id}
+                    style={{ borderBottom: "0.5px solid #f3f4f6" }}
+                  >
+                    <td
+                      style={{ padding: "10px 14px", fontFamily: "monospace" }}
+                    >
+                      {s?.admission_number || `SIS-${s?.id}`}
+                    </td>
+                    <td style={{ padding: "10px 14px", fontWeight: 500 }}>
+                      {s?.name}
+                    </td>
+                    <td style={{ padding: "10px 14px" }}>{s?.county || "—"}</td>
+                    <td style={{ padding: "10px 14px" }}>{s?.phone || "—"}</td>
+                    <td style={{ padding: "10px 14px" }}>
+                      <Badge
+                        label={s?.satisfaction || "Happy"}
+                        color={SATISFACTION_COLORS[s?.satisfaction || "Happy"]}
+                        bg={SATISFACTION_BG[s?.satisfaction || "Happy"]}
+                      />
+                    </td>
+                    <td style={{ padding: "10px 14px" }}>
+                      <Badge
+                        label={s?.status || "Active"}
+                        color="#16a34a"
+                        bg="#dcfce7"
+                      />
+                    </td>
+                    <td
+                      style={{ padding: "10px 14px", display: "flex", gap: 6 }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => startEdit(s)}
+                        style={{
+                          background: "#eef2ff",
+                          border: "none",
+                          borderRadius: 6,
+                          color: "#1d4ed8",
+                          padding: "6px 10px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(s)}
+                        style={{
+                          background: "#fee2e2",
+                          border: "none",
+                          borderRadius: 6,
+                          color: "#b91c1c",
+                          padding: "6px 10px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Controls */}
+        <div
+          style={{
+            padding: "12px 14px",
+            borderTop: "1px solid #e5e7eb",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "#f9fafb",
+          }}
+        >
+          <div style={{ fontSize: 12, color: "#6b7280" }}>
+            Showing <strong>{filtered.length}</strong> of{" "}
+            <strong>{paginatedData.meta.total}</strong> students
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 12, color: "#6b7280" }}>Per page:</span>
+              <select
+                value={perPage}
+                onChange={(e) => handleFilterChange(setPerPage)(e.target.value)}
+                style={{
+                  padding: "4px 8px",
+                  fontSize: 12,
+                  borderRadius: 6,
+                  border: "1px solid #d1d5db",
+                }}
+              >
+                {[10, 25, 50, 100].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: "flex", gap: 4 }}>
+              <button
+                disabled={page <= 1 || compLoading}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: 12,
+                  borderRadius: 6,
+                  border: "1px solid #d1d5db",
+                  background: page <= 1 ? "#f3f4f6" : "#fff",
+                  cursor: page <= 1 ? "not-allowed" : "pointer",
+                }}
+              >
+                Previous
+              </button>
+              <div
+                style={{
+                  padding: "6px 12px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: BRAND,
+                }}
+              >
+                Page {page} of {paginatedData.meta.last_page}
+              </div>
+              <button
+                disabled={page >= paginatedData.meta.last_page || compLoading}
+                onClick={() => setPage((p) => p + 1)}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: 12,
+                  borderRadius: 6,
+                  border: "1px solid #d1d5db",
+                  background:
+                    page >= paginatedData.meta.last_page ? "#f3f4f6" : "#fff",
+                  cursor:
+                    page >= paginatedData.meta.last_page
+                      ? "not-allowed"
+                      : "pointer",
+                }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -2374,8 +2539,8 @@ function Students({ dbData, onRefresh, headers }) {
 function Staff({ dbData, onRefresh }) {
   const [showForm, setShowForm] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [compLoading, setCompLoading] = useState(false);
+  const [compError, setCompError] = useState("");
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -2398,12 +2563,12 @@ function Staff({ dbData, onRefresh }) {
     });
     setEditingStaff(null);
     setShowForm(false);
-    setError("");
+    setCompError("");
   };
 
   const handleSave = async () => {
-    setLoading(true);
-    setError("");
+    setCompLoading(true);
+    setCompError("");
     try {
       if (editingStaff) {
         await api.put(`/staff/${editingStaff.id}`, form);
@@ -2413,13 +2578,13 @@ function Staff({ dbData, onRefresh }) {
       onRefresh();
       resetForm();
     } catch (err) {
-      setError(
+      setCompError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to save staff member. Please check details."
+          "Failed to save staff member. Please check details.",
       );
     } finally {
-      setLoading(false);
+      setCompLoading(false);
     }
   };
 
@@ -2471,7 +2636,7 @@ function Staff({ dbData, onRefresh }) {
             marginBottom: 20,
           }}
         >
-          {error && (
+          {compError && (
             <div
               style={{
                 background: "#fee2e2",
@@ -2482,7 +2647,7 @@ function Staff({ dbData, onRefresh }) {
                 marginBottom: 14,
               }}
             >
-              {error}
+              {compError}
             </div>
           )}
           <div
@@ -2648,7 +2813,7 @@ function Staff({ dbData, onRefresh }) {
           <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
             <button
               onClick={handleSave}
-              disabled={loading}
+              disabled={compLoading}
               style={{
                 background: BRAND,
                 color: "#fff",
@@ -2656,19 +2821,19 @@ function Staff({ dbData, onRefresh }) {
                 borderRadius: 7,
                 padding: "8px 20px",
                 cursor: "pointer",
-                opacity: loading ? 0.7 : 1,
+                opacity: compLoading ? 0.7 : 1,
               }}
             >
-              {loading
-                ? "Saving..."
+              {compLoading
+                ? "Processing..."
                 : editingStaff
-                ? "Update Staff Member"
-                : "Save Staff Member"}
+                  ? "Update Staff Member"
+                  : "Save Staff Member"}
             </button>
             <button
               type="button"
               onClick={resetForm}
-              disabled={loading}
+              disabled={compLoading}
               style={{
                 background: "#fff",
                 border: "1px solid #d1d5db",
@@ -2763,8 +2928,8 @@ function Certifications({ dbData, onRefresh }) {
   const [selectedCertId, setSelectedCertId] = useState(null);
   const [editingCert, setEditingCert] = useState(null);
   const [editingLevel, setEditingLevel] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [compLoading, setCompLoading] = useState(false);
+  const [compError, setCompError] = useState("");
 
   const [certForm, setCertForm] = useState({
     name: "",
@@ -2784,8 +2949,8 @@ function Certifications({ dbData, onRefresh }) {
   const selectedCert = certificationsArr.find((c) => c.id === selectedCertId);
 
   const handleCertSave = async () => {
-    setLoading(true);
-    setError("");
+    setCompLoading(true);
+    setCompError("");
     try {
       if (editingCert) {
         await api.put(`/certifications/${editingCert.id}`, certForm);
@@ -2797,17 +2962,18 @@ function Certifications({ dbData, onRefresh }) {
       setEditingCert(null);
       setCertForm({ name: "", acronym: "", description: "" });
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Failed to save certification authority."
+      setCompError(
+        err.response?.data?.message ||
+          "Failed to save certification authority.",
       );
     } finally {
-      setLoading(false);
+      setCompLoading(false);
     }
   };
 
   const handleLevelSave = async () => {
-    setLoading(true);
-    setError("");
+    setCompLoading(true);
+    setCompError("");
     try {
       const payload = { ...levelForm, certification_id: selectedCertId };
       if (editingLevel) {
@@ -2825,9 +2991,11 @@ function Certifications({ dbData, onRefresh }) {
         default_modules_count: "1",
       });
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to save level details.");
+      setCompError(
+        err.response?.data?.message || "Failed to save level details.",
+      );
     } finally {
-      setLoading(false);
+      setCompLoading(false);
     }
   };
 
@@ -2874,7 +3042,7 @@ function Certifications({ dbData, onRefresh }) {
             marginBottom: 20,
           }}
         >
-          {error && (
+          {compError && (
             <div
               style={{
                 background: "#fee2e2",
@@ -2885,7 +3053,7 @@ function Certifications({ dbData, onRefresh }) {
                 marginBottom: 14,
               }}
             >
-              {error}
+              {compError}
             </div>
           )}
           <div
@@ -2933,7 +3101,7 @@ function Certifications({ dbData, onRefresh }) {
           <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
             <button
               onClick={handleCertSave}
-              disabled={loading}
+              disabled={compLoading}
               style={{
                 background: BRAND,
                 color: "#fff",
@@ -2941,14 +3109,14 @@ function Certifications({ dbData, onRefresh }) {
                 borderRadius: 7,
                 padding: "8px 20px",
                 cursor: "pointer",
-                opacity: loading ? 0.7 : 1,
+                opacity: compLoading ? 0.7 : 1,
               }}
             >
-              {loading ? "Saving..." : "Save Authority"}
+              {compLoading ? "Saving..." : "Save Authority"}
             </button>
             <button
               onClick={() => setShowForm(false)}
-              disabled={loading}
+              disabled={compLoading}
               style={{
                 background: "#fff",
                 border: "1px solid #d1d5db",
@@ -3235,7 +3403,7 @@ function Certifications({ dbData, onRefresh }) {
                   <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
                     <button
                       onClick={handleLevelSave}
-                      disabled={loading}
+                      disabled={compLoading}
                       style={{
                         background: BRAND,
                         color: "#fff",
@@ -3244,14 +3412,14 @@ function Certifications({ dbData, onRefresh }) {
                         padding: "4px 12px",
                         fontSize: 11,
                         cursor: "pointer",
-                        opacity: loading ? 0.7 : 1,
+                        opacity: compLoading ? 0.7 : 1,
                       }}
                     >
-                      {loading ? "Saving..." : "Save Level"}
+                      {compLoading ? "Saving..." : "Save Level"}
                     </button>
                     <button
                       onClick={() => setShowLevelForm(false)}
-                      disabled={loading}
+                      disabled={compLoading}
                       style={{
                         background: "#fff",
                         border: "1px solid #d1d5db",
@@ -3385,6 +3553,7 @@ export default function App() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [dbData, setDbData] = useState({
     departments: [],
@@ -3474,8 +3643,8 @@ export default function App() {
       });
 
       setDbData(newState);
-    } catch (error) {
-      console.error("❌ Data pipeline failure:", error);
+    } catch (err) {
+      console.error("❌ Data pipeline failure:", err);
     } finally {
       setLoading(false);
     }
@@ -3663,6 +3832,7 @@ export default function App() {
         element={
           token && userType === "staff" ? (
             <div
+              className="app-shell"
               style={{
                 display: "flex",
                 minHeight: "100vh",
@@ -3672,6 +3842,7 @@ export default function App() {
             >
               {/* Navigation Sidebar */}
               <div
+                className={`app-sidebar${sidebarOpen ? " open" : ""}`}
                 style={{
                   width: 220,
                   background: "#fff",
@@ -3682,6 +3853,7 @@ export default function App() {
                 }}
               >
                 <div
+                  className="app-sidebar-header"
                   style={{
                     padding: "20px 16px",
                     borderBottom: "0.5px solid #f3f4f6",
@@ -3689,26 +3861,55 @@ export default function App() {
                 >
                   <div
                     style={{
-                      color: BRAND,
-                      fontWeight: 700,
-                      fontSize: 15,
-                      letterSpacing: 0.5,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
                     }}
                   >
-                    MAGO TVTC
-                  </div>
-                  <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
-                    Management Portal
+                    <div>
+                      <div
+                        style={{
+                          color: BRAND,
+                          fontWeight: 700,
+                          fontSize: 15,
+                          letterSpacing: 0.5,
+                        }}
+                      >
+                        MAGO TVTC
+                      </div>
+                      <div
+                        style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}
+                      >
+                        Management Portal
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSidebarOpen(false)}
+                      className="app-sidebar-close"
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        color: "#374151",
+                        fontSize: 20,
+                        cursor: "pointer",
+                      }}
+                    >
+                      ×
+                    </button>
                   </div>
                 </div>
 
-                <div style={{ padding: 10, flex: 1 }}>
+                <div style={{ padding: 10 }}>
                   {NAV_ITEMS.map((item) => {
                     const isActive = location.pathname === item.path;
                     return (
                       <button
                         key={item.id}
-                        onClick={() => navigate(item.path)}
+                        onClick={() => {
+                          navigate(item.path);
+                          setSidebarOpen(false);
+                        }}
                         style={{
                           display: "flex",
                           alignItems: "center",
@@ -3786,7 +3987,38 @@ export default function App() {
               </div>
 
               {/* Main Frame Page Container */}
-              <div style={{ flex: 1, padding: 24, overflowY: "auto" }}>
+              <div
+                className="app-main"
+                style={{ flex: 1, padding: 24, overflowY: "auto" }}
+              >
+                <div className="app-topbar">
+                  <button
+                    type="button"
+                    className="app-menu-toggle"
+                    onClick={() => setSidebarOpen(true)}
+                    style={{
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      border: "1px solid #d1d5db",
+                      background: "#fff",
+                      color: "#111827",
+                      cursor: "pointer",
+                      fontSize: 14,
+                      fontWeight: 600,
+                    }}
+                  >
+                    ☰ Menu
+                  </button>
+                  <div
+                    className="app-topbar-title"
+                    style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}
+                  >
+                    {NAV_ITEMS.find((item) => item.path === location.pathname)
+                      ?.label || "Dashboard"}
+                  </div>
+                </div>
                 {renderRoutes()}
               </div>
             </div>

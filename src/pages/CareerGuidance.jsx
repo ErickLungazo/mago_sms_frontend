@@ -19,8 +19,8 @@ export default function CareerGuidance() {
   return (
     <div className="min-h-screen">
       {/* Sticky Navigation Sub-bar */}
-      <div className="sticky top-0 bg-white/80 backdrop-blur-md z-10 border-b border-gray-100 mb-8 -mx-8 px-8 no-print">
-        <div className="flex gap-8">
+      <div className="sticky top-0 bg-white/80 backdrop-blur-md z-10 border-b border-gray-100 mb-8 -mx-8 px-4 sm:px-8 no-print">
+        <div className="flex flex-wrap gap-3 overflow-x-auto py-3 sm:gap-8">
           {tabs.map((t) => (
             <button
               key={t.id}
