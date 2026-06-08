@@ -24,6 +24,7 @@ export default function CareerAnalytics() {
     funding: "",
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     api
@@ -33,7 +34,10 @@ export default function CareerAnalytics() {
   }, []);
 
   useEffect(() => {
-    queueMicrotask(() => setLoading(true));
+    queueMicrotask(() => {
+      setLoading(true);
+      setError("");
+    });
     const params = {};
     if (filters.department_id) params.department_id = filters.department_id;
     if (filters.gender) params.gender = filters.gender;
@@ -65,6 +69,10 @@ export default function CareerAnalytics() {
               }))
             : [],
         });
+      })
+      .catch((err) => {
+        console.error("Analytics Error:", err);
+        setError(err.response?.data?.message || "Failed to load analytics metrics.");
       })
       .finally(() => setLoading(false));
   }, [filters]);
@@ -117,13 +125,37 @@ export default function CareerAnalytics() {
     setFilters((prev) => ({ ...prev, [key]: value === "All" ? "" : value }));
   };
 
-  if (loading || !insights) {
+  if (loading || (!insights && !error)) {
     return (
       <div className="flex flex-col gap-3 justify-center items-center py-40 bg-white rounded-xl border border-slate-100">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-slate-800"></div>
         <p className="text-xs font-bold text-slate-400 tracking-widest font-mono">
           INITIALIZING DATA STACK...
         </p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col gap-4 justify-center items-center py-40 bg-white rounded-xl border border-rose-100 px-6 text-center">
+        <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center text-2xl">
+          ⚠️
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+            Data Access Restricted
+          </h3>
+          <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+            {error}. Please ensure your account has the required permissions to view analytics.
+          </p>
+        </div>
+        <button 
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg"
+        >
+          Retry Connection
+        </button>
       </div>
     );
   }
@@ -174,8 +206,8 @@ export default function CareerAnalytics() {
 
       {/* Official Management Header (Print Only) */}
       <div className="hidden print-only print-top-header mb-6">
-        <div className="text-2xl font-black text-[#0a6e4e]">MAGO TECHNICAL & VOCATIONAL COLLEGE</div>
-        <div className="text-sm font-bold text-gray-600 uppercase tracking-widest mt-1">Institutional Career Intelligence Report</div>
+        <div className="text-2xl font-black text-[#0a6e4e]">MAGO TECHNICAL AND VOCATIONAL COLLEGE</div>
+        <div className="text-sm font-bold text-gray-600 uppercase tracking-widest mt-1">Career Analytics Intelligence Report</div>
         <div className="flex justify-between items-end mt-6 border-t pt-4 border-gray-100">
           <div className="text-left">
             <div className="text-[10px] text-gray-400 font-bold uppercase">Metric Scope</div>

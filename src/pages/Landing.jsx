@@ -3,6 +3,14 @@ import SurveyModal from "../components/public/SurveyModal";
 import CounsellingModal from "../components/public/CounsellingModal";
 import api from "../api";
 
+// Local Assets
+import siteLogo from "../assets/logo.png";
+import missionImg from "../assets/scouts.jpeg";
+import hostelImg from "../assets/hostel.jpeg";
+import ictImg from "../assets/graduation.jpeg";
+import engineeringImg from "../assets/treegood.jpeg";
+import graduationImg from "../assets/graduationn.jpeg";
+
 export default function Landing({ onPortalLogin }) {
   const [surveyOpen, setSurveyOpen] = useState(false);
   const [counsellingOpen, setCounsellingOpen] = useState(false);
@@ -68,14 +76,18 @@ export default function Landing({ onPortalLogin }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex justify-between items-center w-full">
           {/* Brand Identity */}
           <div className="flex items-center gap-3.5 flex-shrink-0 group cursor-pointer">
-            <div className="w-11 h-11 bg-gradient-to-br from-emerald-600 to-teal-800 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-md shadow-emerald-900/10 group-hover:scale-105 transition-all duration-300">
-              M
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-900 rounded-2xl flex items-center justify-center p-0.5 shadow-lg shadow-emerald-900/20 group-hover:scale-105 transition-all duration-300 relative">
+              <img 
+                src={siteLogo} 
+                alt="Mago TVC Logo" 
+                className="w-full h-full object-contain"
+              />
             </div>
-            <div>
-              <div className="text-lg font-black text-slate-900 tracking-tight leading-none bg-gradient-to-r from-slate-900 to-emerald-700 bg-clip-text text-transparent">
-                Mago TVTC
+            <div className="flex flex-col">
+              <div className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight leading-none bg-gradient-to-r from-slate-900 to-emerald-700 bg-clip-text text-transparent">
+                Mago TVC
               </div>
-              <div className="text-[9px] font-bold text-emerald-600 uppercase tracking-[0.2em] mt-1.5 block">
+              <div className="text-[8px] sm:text-[10px] font-bold text-emerald-600 uppercase tracking-[0.15em] sm:tracking-[0.2em] mt-1 sm:mt-2 block opacity-100">
                 Technical Excellence Center
               </div>
             </div>
@@ -200,7 +212,7 @@ export default function Landing({ onPortalLogin }) {
             <div className="h-4 w-[1px] bg-slate-200 mx-2" />
 
             <button
-              onClick={onPortalLogin}
+              onClick={() => onPortalLogin()}
               className="h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-xs tracking-wide transition-all shadow-sm shadow-emerald-600/10 active:scale-[0.98]"
             >
               Login Portal
@@ -305,7 +317,6 @@ export default function Landing({ onPortalLogin }) {
           <div className="lg:col-span-5 w-full max-w-md mx-auto lg:max-w-none">
             <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/60 shadow-xl shadow-slate-100/50 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-emerald-500/10 to-transparent rounded-bl-[60px]" />
-
               <h3 className="text-base font-bold text-slate-900 tracking-tight mb-1">
                 Student Operations Hub
               </h3>
@@ -315,7 +326,7 @@ export default function Landing({ onPortalLogin }) {
 
               <div className="space-y-3">
                 <button
-                  onClick={onPortalLogin}
+                  onClick={() => onPortalLogin("student")}
                   className="w-full h-12 bg-slate-900 hover:bg-black text-white rounded-xl flex items-center justify-between px-4 font-semibold text-xs tracking-wide transition-all group"
                 >
                   <div className="flex items-center gap-2.5">
@@ -342,10 +353,10 @@ export default function Landing({ onPortalLogin }) {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setSurveyOpen(true)}
-                    className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200/40 rounded-xl p-4 flex flex-col justify-between items-start text-left h-24 transition-all"
+                    className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200/40 rounded-xl p-4 flex flex-col justify-between items-start text-left h-28 transition-all group/btn shadow-sm hover:shadow-md"
                   >
                     <svg
-                      className="w-5 h-5 text-emerald-600"
+                      className="w-6 h-6 text-emerald-600 mb-2 transform group-hover/btn:scale-110 transition-transform"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -357,16 +368,16 @@ export default function Landing({ onPortalLogin }) {
                         d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
-                    <span className="text-xs font-semibold text-slate-700">
-                      Course Survey
+                    <span className="text-sm font-extrabold text-slate-800 tracking-tight leading-tight">
+                      Course <br /> Satisfaction Survey
                     </span>
                   </button>
                   <button
                     onClick={() => setCounsellingOpen(true)}
-                    className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200/40 rounded-xl p-4 flex flex-col justify-between items-start text-left h-24 transition-all"
+                    className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200/40 rounded-xl p-4 flex flex-col justify-between items-start text-left h-28 transition-all group/btn shadow-sm hover:shadow-md"
                   >
                     <svg
-                      className="w-5 h-5 text-indigo-600"
+                      className="w-6 h-6 text-indigo-600 mb-2 transform group-hover/btn:scale-110 transition-transform"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -378,8 +389,8 @@ export default function Landing({ onPortalLogin }) {
                         d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
-                    <span className="text-xs font-semibold text-slate-700">
-                      Counseling Hub
+                    <span className="text-sm font-extrabold text-slate-800 tracking-tight leading-tight">
+                      Counseling <br /> Support Hub
                     </span>
                   </button>
                 </div>
@@ -418,6 +429,92 @@ export default function Landing({ onPortalLogin }) {
           </div>
         </div>
       </section>
+
+      {/* Our Mission Section */}
+      <section className="py-20 bg-white px-4 sm:px-6 lg:px-8 border-b border-slate-200/50">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="space-y-6">
+            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              Our Mission: <br />
+              Empowering Through <br />
+              <span className="text-emerald-600">Technical Excellence</span>
+            </h2>
+            <p className="text-slate-600 font-medium leading-relaxed">
+              Mago Technical and Vocational Training College is dedicated to serving God and humanity by providing high-quality, sustainable technical education. We bridge the gap between education and the job market through a rigorous 70% practical training model.
+            </p>
+            <div className="grid grid-cols-2 gap-6 pt-4">
+              <div className="space-y-2">
+                <div className="text-2xl font-black text-slate-900">95%</div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">Exam Pass Rate</div>
+              </div>
+              <div className="space-y-2">
+                <div className="text-2xl font-black text-slate-900">72</div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">Hostel Capacity</div>
+              </div>
+            </div>
+          </div>
+          <div className="relative group">
+            <div className="absolute -inset-4 bg-emerald-600/5 rounded-[40px] -rotate-2 group-hover:rotate-0 transition-transform duration-500" />
+            <img
+              src={missionImg}
+              alt="Mago TVC Campus"
+              className="relative w-full aspect-square object-cover rounded-[32px] shadow-2xl border border-white"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Facilities & Infrastructure Section */}
+      <section className="py-24 bg-slate-50 px-4 sm:px-6 lg:px-8 overflow-hidden">
+        <div className="max-w-7xl mx-auto space-y-16">
+          <div className="text-center space-y-4 max-w-2xl mx-auto">
+            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">World-Class Infrastructure</h2>
+            <p className="text-slate-500 font-medium text-sm">We provide students with modern tools and environments to simulate real-world professional settings.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="bg-white p-2 rounded-[32px] border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-500 group">
+              <img src={ictImg} alt="Computer Lab" className="w-full h-48 object-cover rounded-[24px] mb-6" />
+              <div className="p-4 pt-0 space-y-2">
+                <h4 className="font-bold text-slate-900">Digital ICT Hub</h4>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">Advanced computer laboratory equipped for software development, graphic design, and networking certification.</p>
+              </div>
+            </div>
+            <div className="bg-white p-2 rounded-[32px] border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-500 group">
+              <img src={engineeringImg} alt="Engineering Workshop" className="w-full h-48 object-cover rounded-[24px] mb-6" />
+              <div className="p-4 pt-0 space-y-2">
+                <h4 className="font-bold text-slate-900">Automotive Engineering</h4>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">Specialized workshops for vehicle diagnostics, engine overhauls, and sustainable transportation solutions.</p>
+              </div>
+            </div>
+            <div className="bg-white p-2 rounded-[32px] border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-500 group">
+              <img src={hostelImg} alt="Rainbow Hostel" className="w-full h-48 object-cover rounded-[24px] mb-6" />
+              <div className="p-4 pt-0 space-y-2">
+                <h4 className="font-bold text-slate-900">Rainbow Student Hostel</h4>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">Secure and modern on-campus accommodation for 72 students, fostering a focused academic environment.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Floating Survey Button for Quick Access */}
+      <div className="fixed bottom-8 right-8 z-[60] flex flex-col items-end gap-3 pointer-events-none">
+        <div className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-2xl animate-bounce pointer-events-auto cursor-default">
+          Student Feedback Live
+        </div>
+        <button
+          onClick={() => setSurveyOpen(true)}
+          className="w-16 h-16 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-2xl flex items-center justify-center text-2xl transition-all active:scale-95 pointer-events-auto group relative"
+        >
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div className="absolute right-full mr-4 bg-white border border-slate-200 text-slate-900 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-xl">
+            Quick Satisfaction Survey
+          </div>
+        </button>
+      </div>
 
       {/* Dynamic Render Section: Operational Programs Catalog */}
       {showExplore && (
@@ -570,8 +667,8 @@ export default function Landing({ onPortalLogin }) {
 
       {/* Global Bottom Information System Wrapper Block Component */}
       <footer className="py-10 border-t border-slate-200 bg-white text-center px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3.5">
-          © 2026 Mago Technical & Vocational Training College
+        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3.5">
+          © 2026 Mago Technical & Vocational College (TVC)
         </div>
         <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs font-semibold text-slate-500">
           <a href="#" className="hover:text-emerald-600 transition-colors">

@@ -1,10 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import api from "../../api";
 
 export default function SatisfactionSurvey() {
   const [id, setId] = useState("");
   const [studentName, setStudentName] = useState("");
+  const [departments, setDepartments] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [selectedDeptId, setSelectedDeptId] = useState("");
+  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [studentsInCourse, setStudentsInCourse] = useState([]);
+  const [studentSearch, setStudentSearch] = useState("");
+  const [fetchingStudents, setFetchingStudents] = useState(false);
+  const formRef = useRef(null);
+
   const [form, setForm] = useState({
     satisfaction_rating: "Happy",
     influencer: "Self",
@@ -17,16 +25,68 @@ export default function SatisfactionSurvey() {
 
   useEffect(() => {
     api
+      .get("/departments")
+      .then((res) => setDepartments(res.data.data || res.data || []));
+    api
       .get("/courses")
       .then((res) => setCourses(res.data.data || res.data || []));
   }, []);
+
+  const fetchRoster = useCallback(() => {
+    if (selectedCourseId || selectedDeptId) {
+      setFetchingStudents(true);
+      const params = {};
+      if (selectedCourseId) params.course_id = selectedCourseId;
+      if (selectedDeptId) params.department_id = selectedDeptId;
+
+      api
+        .get("/students", { params })
+        .then((res) => {
+           const payload = res.data.data || res.data || {};
+           const rows = payload.data || payload;
+           setStudentsInCourse(Array.isArray(rows) ? rows : []);
+        })
+        .catch(() => setStudentsInCourse([]))
+        .finally(() => setFetchingStudents(false));
+    } else {
+      setStudentsInCourse([]);
+    }
+  }, [selectedCourseId, selectedDeptId]);
+
+  // Fetch students when filters change
+  useEffect(() => {
+    fetchRoster();
+  }, [fetchRoster]);
+
+  const filteredCourses = useMemo(() => {
+    if (!selectedDeptId) return courses;
+    return courses.filter(c => String(c.department_id) === String(selectedDeptId));
+  }, [courses, selectedDeptId]);
+
+  const filteredStudents = useMemo(() => {
+    if (!studentSearch) return studentsInCourse;
+    const term = studentSearch.toLowerCase();
+    return studentsInCourse.filter(s => 
+      s.name.toLowerCase().includes(term) ||
+      s.id.toLowerCase().includes(term) ||
+      (s.course?.name && s.course.name.toLowerCase().includes(term))
+    );
+  }, [studentsInCourse, studentSearch]);
+
+  const selectStudent = (student) => {
+    setId(student.id);
+    setStudentName(student.name);
+    // Scroll to form for better UX
+    formRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const checkStudent = async (val) => {
     setId(val);
     if (val.length > 4) {
       try {
         const res = await api.get(`/students?search=${val}`);
-        if (res.data.data?.[0]) setStudentName(res.data.data[0].name);
+        const data = res.data.data?.[0] || res.data?.[0];
+        if (data) setStudentName(data.name);
         else setStudentName("");
       } catch (error) {
         console.error("Unable to resolve student lookup", error);
@@ -48,6 +108,10 @@ export default function SatisfactionSurvey() {
       };
 
       await api.post("/satisfaction-surveys", payload);
+      
+      // Re-fetch roster to update the badges in the grid immediately
+      fetchRoster();
+
       setSubmitted(true);
       setTimeout(() => {
         setSubmitted(false);
@@ -74,6 +138,15 @@ export default function SatisfactionSurvey() {
     window.print();
   };
 
+  const handlePrintReport = () => {
+    const printContent = document.getElementById("course-report-print-zone");
+    const originalContent = document.body.innerHTML;
+    document.body.innerHTML = printContent.innerHTML;
+    window.print();
+    document.body.innerHTML = originalContent;
+    window.location.reload(); // Reload to restore React state/events
+  };
+
   if (submitted) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -92,304 +165,482 @@ export default function SatisfactionSurvey() {
     );
   }
 
+  const selectedCourseName = courses.find(c => String(c.id) === String(selectedCourseId))?.name || "All Dept Courses";
+  const selectedDeptName = departments.find(d => String(d.id) === String(selectedDeptId))?.name || "All Departments";
+
   // Find selected course name for print validation purposes
   const chosenAlternativeCourse =
     courses.find((c) => String(c.id) === String(form.alternative_course_id))
       ?.name || "Stay in Current Course";
 
   return (
-    <div
-      id="survey-print-root"
-      className="max-w-4xl mx-auto p-4 md:p-6 text-slate-800 antialiased"
-    >
-      {/* Precision Print Architecture */}
-      <style>{`
-        @media print {
-          body, html, #root {
-            visibility: hidden !important;
-            background: #ffffff !important;
-          }
-          #survey-print-root, #survey-print-root * {
-            visibility: visible !important;
-          }
-          #survey-print-root {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            padding: 0 !important;
-          }
-          .no-print {
-            display: none !important;
-          }
-          .print-border-clean {
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 8px !important;
-          }
-          .print-title {
-            font-size: 24px !important;
-            color: #000000 !important;
-          }
-        }
-      `}</style>
-
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden print-border-clean">
-        {/* Header Block */}
-        <div className="p-6 md:p-8 bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800">
+    <div className="max-w-6xl mx-auto p-4 md:p-6 text-slate-800 antialiased space-y-8">
+      {/* ── ADMIN SELECTION PIPELINE ────────────────────────────────────────── */}
+      <div className="no-print bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl md:text-2xl font-bold tracking-tight print-title">
-              Institutional Satisfaction Survey
-            </h2>
-            <p className="text-slate-400 text-xs uppercase font-semibold tracking-wider mt-1">
-              Term 2 · 2026 Academic Metric Gathering
-            </p>
+            <h3 className="text-lg font-black text-slate-900">Metric Selection Pipeline</h3>
+            <p className="text-xs text-slate-500">Filter students by department and course for batch status updates.</p>
           </div>
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="no-print self-start sm:self-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 transition"
-          >
-            🖨️ Print Form State
-          </button>
+          {(selectedCourseId || selectedDeptId) && (
+            <button
+              onClick={handlePrintReport}
+              className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition shadow-sm"
+            >
+              📊 Print Detailed Table Report
+            </button>
+          )}
         </div>
 
-        {/* Workspace Matrix */}
-        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-8">
-          {/* Identity Matrix Grid */}
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 space-y-4">
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-                Verification Pipeline
-              </label>
-              <input
-                required
-                className="w-full px-4 py-3 text-base rounded-lg border border-slate-200 bg-white focus:border-slate-400 outline-none transition font-mono uppercase tracking-wide placeholder:text-slate-300"
-                placeholder="ENTER STUDENT ID (e.g. MG2024001)"
-                value={id}
-                onChange={(e) => checkStudent(e.target.value)}
-              />
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-400 font-mono">Department</label>
+            <select
+              className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold outline-none focus:border-emerald-500 focus:bg-white transition"
+              value={selectedDeptId}
+              onChange={(e) => {
+                setSelectedDeptId(e.target.value);
+                setSelectedCourseId("");
+              }}
+            >
+              <option value="">All Departments</option>
+              {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </div>
 
-            {studentName && (
-              <div className="p-3 bg-emerald-50 rounded-lg flex items-center gap-2.5 border border-emerald-100">
-                <span className="text-sm">👤</span>
-                <span className="text-xs font-bold text-emerald-800">
-                  Authenticated Record:{" "}
-                  <span className="underline">{studentName}</span>
-                </span>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-400 font-mono">Course</label>
+            <select
+              className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold outline-none focus:border-emerald-500 focus:bg-white transition"
+              value={selectedCourseId}
+              onChange={(e) => setSelectedCourseId(e.target.value)}
+            >
+              <option value="">{selectedDeptId ? "All Departmental Courses" : "Select Course"}</option>
+              {filteredCourses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-400 font-mono">Search Student</label>
+            <input
+              type="text"
+              placeholder="Search by name, ID or course..."
+              className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold outline-none focus:border-emerald-500 focus:bg-white transition"
+              value={studentSearch}
+              onChange={(e) => setStudentSearch(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {(selectedCourseId || selectedDeptId) && (
+          <div className="pt-4 border-t border-slate-100">
+            {fetchingStudents ? (
+              <p className="text-center py-8 text-xs font-bold text-slate-400 animate-pulse">SYNCHRONIZING STUDENT ROSTER...</p>
+            ) : filteredStudents.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto pr-2">
+                {filteredStudents.map(student => (
+                  <button
+                    key={student.id}
+                    onClick={() => selectStudent(student)}
+                    className={`p-4 rounded-xl border text-left transition flex flex-col gap-1 ${
+                      id === student.id 
+                        ? "bg-emerald-50 border-emerald-500 shadow-sm" 
+                        : "bg-white border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="text-xs font-black text-slate-900 truncate pr-2">{student.name}</span>
+                      <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
+                        student.satisfaction === 'Happy' ? 'bg-emerald-100 text-emerald-700' :
+                        student.satisfaction === 'Unhappy' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {student.satisfaction || 'PENDING'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-[10px] font-mono text-slate-400">{student.id}</span>
+                      <span className="text-[9px] text-slate-400 font-bold uppercase truncate max-w-[100px]">{student.course?.name}</span>
+                    </div>
+                  </button>
+                ))}
               </div>
+            ) : (
+              <p className="text-center py-8 text-xs text-slate-400 italic">No students found matching current criteria.</p>
             )}
           </div>
+        )}
+      </div>
 
-          {/* Form Matrix Layout Engine Table (Visible Everywhere, Highly Stable for Print Layouts) */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <tbody className="divide-y divide-slate-100 text-xs md:text-sm">
-                {/* Sentiment Mapping */}
-                <tr>
-                  <td className="py-4 pr-4 font-semibold text-slate-500 w-full sm:w-1/3 align-top">
-                    1. Course Sentiment
-                  </td>
-                  <td className="py-4">
-                    <div className="flex gap-2 no-print">
-                      {[
-                        {
-                          val: "Happy",
-                          emoji: "😊",
-                          active:
-                            "bg-emerald-50 border-emerald-300 text-emerald-700 font-bold",
-                        },
-                        {
-                          val: "Neutral",
-                          emoji: "😐",
-                          active:
-                            "bg-slate-100 border-slate-300 text-slate-700 font-bold",
-                        },
-                        {
-                          val: "Unhappy",
-                          emoji: "☹️",
-                          active:
-                            "bg-rose-50 border-rose-300 text-rose-700 font-bold",
-                        },
-                      ].map((item) => (
-                        <button
-                          key={item.val}
-                          type="button"
-                          onClick={() =>
-                            setForm({ ...form, satisfaction_rating: item.val })
-                          }
-                          className={`flex-1 p-3 rounded-lg border transition text-center flex flex-col items-center gap-1 ${
-                            form.satisfaction_rating === item.val
-                              ? item.active
-                              : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
-                          }`}
-                        >
-                          <span className="text-xl">{item.emoji}</span>
-                          <span className="text-[10px] uppercase tracking-wider">
-                            {item.val}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                    {/* Fallback layout representation strictly captured during raw browser print actions */}
-                    <div className="hidden print:block font-bold text-slate-900">
-                      {form.satisfaction_rating}
-                    </div>
-                  </td>
-                </tr>
+      {/* ── SURVEY FORM SECTION ─────────────────────────────────────────────── */}
+      <div
+        id="survey-print-root"
+        ref={formRef}
+        className="max-w-4xl mx-auto text-slate-800 antialiased"
+      >
+        {/* Precision Print Architecture */}
+        <style>{`
+          @media print {
+            body, html, #root {
+              visibility: hidden !important;
+              background: #ffffff !important;
+            }
+            #survey-print-root, #survey-print-root * {
+              visibility: visible !important;
+            }
+            #survey-print-root {
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              padding: 0 !important;
+            }
+            .no-print {
+              display: none !important;
+            }
+            .print-border-clean {
+              border: 1px solid #cbd5e1 !important;
+              border-radius: 8px !important;
+            }
+            .print-title {
+              font-size: 24px !important;
+              color: #000000 !important;
+            }
+          }
+        `}</style>
 
-                {/* Core Influence Factor */}
-                <tr>
-                  <td className="py-4 pr-4 font-semibold text-slate-500 align-top">
-                    2. Primary Decision Influencer
-                  </td>
-                  <td className="py-4">
-                    <div className="flex flex-wrap gap-1.5 no-print">
-                      {[
-                        "Self",
-                        "Parent/Guardian",
-                        "Teacher",
-                        "Peer/Friend",
-                        "Grade Placement",
-                      ].map((inf) => (
-                        <button
-                          key={inf}
-                          type="button"
-                          onClick={() => setForm({ ...form, influencer: inf })}
-                          className={`px-3 py-1.5 rounded-md border text-xs font-medium transition ${
-                            form.influencer === inf
-                              ? "border-slate-800 bg-slate-800 text-white font-semibold"
-                              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                          }`}
-                        >
-                          {inf}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="hidden print:block font-bold text-slate-900">
-                      {form.influencer}
-                    </div>
-                  </td>
-                </tr>
-
-                {/* Retention Roadmap */}
-                <tr>
-                  <td className="py-4 pr-4 font-semibold text-slate-500 align-top">
-                    3. Completion Intent Status
-                  </td>
-                  <td className="py-4">
-                    <div className="flex gap-2 max-w-xs no-print">
-                      {["Yes", "No", "Uncertain"].map((v) => (
-                        <button
-                          key={v}
-                          type="button"
-                          onClick={() =>
-                            setForm({ ...form, retention_intent: v })
-                          }
-                          className={`flex-1 py-1.5 rounded border text-xs font-medium transition ${
-                            form.retention_intent === v
-                              ? "bg-slate-900 text-white border-slate-900 font-semibold"
-                              : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                          }`}
-                        >
-                          {v}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="hidden print:block font-bold text-slate-900">
-                      {form.retention_intent}
-                    </div>
-                  </td>
-                </tr>
-
-                {/* Alternative Alignment Matrix */}
-                <tr>
-                  <td className="py-4 pr-4 font-semibold text-slate-500 align-top">
-                    4. Preferred Course Alternative
-                  </td>
-                  <td className="py-4">
-                    <select
-                      className="w-full max-w-md p-2 bg-white rounded-lg border border-slate-200 outline-none focus:border-slate-400 text-xs md:text-sm no-print"
-                      value={form.alternative_course_id}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          alternative_course_id: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="">STAY IN CURRENT COURSE</option>
-                      {courses.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="hidden print:block font-bold text-slate-900">
-                      {chosenAlternativeCourse}
-                    </div>
-                  </td>
-                </tr>
-
-                {/* Roadblocks Tracking */}
-                <tr>
-                  <td className="py-4 pr-4 font-semibold text-slate-500 align-top">
-                    5. Primary Roadblock Tracker
-                  </td>
-                  <td className="py-4">
-                    <select
-                      className="w-full max-w-md p-2 bg-white rounded-lg border border-slate-200 outline-none focus:border-slate-400 text-xs md:text-sm no-print"
-                      value={form.primary_challenge}
-                      onChange={(e) =>
-                        setForm({ ...form, primary_challenge: e.target.value })
-                      }
-                    >
-                      <option>None</option>
-                      <option>Academic Difficulty</option>
-                      <option>Financial Struggles</option>
-                      <option>Lack of Interest</option>
-                      <option>Career Prospects Doubt</option>
-                      <option>Family Pressure</option>
-                    </select>
-                    <div className="hidden print:block font-bold text-slate-900">
-                      {form.primary_challenge}
-                    </div>
-                  </td>
-                </tr>
-
-                {/* Deep-Dive Narrative Textarea */}
-                <tr>
-                  <td className="py-4 pr-4 font-semibold text-slate-500 align-top">
-                    6. Contextual Notes / Explanations
-                  </td>
-                  <td className="py-4">
-                    <textarea
-                      rows={3}
-                      className="w-full p-3 bg-white rounded-lg border border-slate-200 outline-none focus:border-slate-400 text-xs md:text-sm no-print placeholder:text-slate-300"
-                      placeholder="Provide raw breakdown or specific structural reasons behind selection mappings..."
-                      value={form.reason_text}
-                      onChange={(e) =>
-                        setForm({ ...form, reason_text: e.target.value })
-                      }
-                    />
-                    <p className="hidden print:block font-medium text-slate-700 whitespace-pre-wrap italic">
-                      {form.reason_text || "No notes submitted."}
-                    </p>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden print-border-clean">
+          {/* Header Block */}
+          <div className="p-6 md:p-8 bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800">
+            <div>
+              <h2 className="text-xl md:text-2xl font-bold tracking-tight print-title">
+                Institutional Satisfaction Survey
+              </h2>
+              <p className="text-slate-400 text-xs uppercase font-semibold tracking-wider mt-1">
+                Term 2 · 2026 Academic Metric Gathering
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="no-print self-start sm:self-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 transition"
+            >
+              🖨️ Print Form State
+            </button>
           </div>
 
-          {/* Form Actions submission Block */}
-          <button
-            type="submit"
-            className="no-print w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-sm tracking-wide transition shadow-sm"
-          >
-            SUBMIT CONFIDENTIAL DATA MATRIX
-          </button>
-        </form>
+          {/* Workspace Matrix */}
+          <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-8">
+            {/* Identity Matrix Grid */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 space-y-4">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                  Verification Pipeline
+                </label>
+                <input
+                  required
+                  className="w-full px-4 py-3 text-base rounded-lg border border-slate-200 bg-white focus:border-slate-400 outline-none transition font-mono uppercase tracking-wide placeholder:text-slate-300"
+                  placeholder="ENTER STUDENT ID (e.g. MG2024001)"
+                  value={id}
+                  onChange={(e) => checkStudent(e.target.value)}
+                />
+              </div>
+
+              {studentName && (
+                <div className="p-3 bg-emerald-50 rounded-lg flex items-center gap-2.5 border border-emerald-100">
+                  <span className="text-sm">👤</span>
+                  <span className="text-xs font-bold text-emerald-800">
+                    Authenticated Record:{" "}
+                    <span className="underline">{studentName}</span>
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Form Matrix Layout Engine Table (Visible Everywhere, Highly Stable for Print Layouts) */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <tbody className="divide-y divide-slate-100 text-xs md:text-sm">
+                  {/* Sentiment Mapping */}
+                  <tr>
+                    <td className="py-4 pr-4 font-semibold text-slate-500 w-full sm:w-1/3 align-top">
+                      1. Course Sentiment
+                    </td>
+                    <td className="py-4">
+                      <div className="flex gap-2 no-print">
+                        {[
+                          {
+                            val: "Happy",
+                            emoji: "😊",
+                            active:
+                              "bg-emerald-50 border-emerald-300 text-emerald-700 font-bold",
+                          },
+                          {
+                            val: "Neutral",
+                            emoji: "😐",
+                            active:
+                              "bg-slate-100 border-slate-300 text-slate-700 font-bold",
+                          },
+                          {
+                            val: "Unhappy",
+                            emoji: "☹️",
+                            active:
+                              "bg-rose-50 border-rose-300 text-rose-700 font-bold",
+                          },
+                        ].map((item) => (
+                          <button
+                            key={item.val}
+                            type="button"
+                            onClick={() =>
+                              setForm({ ...form, satisfaction_rating: item.val })
+                            }
+                            className={`flex-1 p-3 rounded-lg border transition text-center flex flex-col items-center gap-1 ${
+                              form.satisfaction_rating === item.val
+                                ? item.active
+                                : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
+                            }`}
+                          >
+                            <span className="text-xl">{item.emoji}</span>
+                            <span className="text-[10px] uppercase tracking-wider">
+                              {item.val}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      {/* Fallback layout representation strictly captured during raw browser print actions */}
+                      <div className="hidden print:block font-bold text-slate-900">
+                        {form.satisfaction_rating}
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Core Influence Factor */}
+                  <tr>
+                    <td className="py-4 pr-4 font-semibold text-slate-500 align-top">
+                      2. Primary Decision Influencer
+                    </td>
+                    <td className="py-4">
+                      <div className="flex flex-wrap gap-1.5 no-print">
+                        {[
+                          "Self",
+                          "Parent/Guardian",
+                          "Teacher",
+                          "Peer/Friend",
+                          "Grade Placement",
+                        ].map((inf) => (
+                          <button
+                            key={inf}
+                            type="button"
+                            onClick={() => setForm({ ...form, influencer: inf })}
+                            className={`px-3 py-1.5 rounded-md border text-xs font-medium transition ${
+                              form.influencer === inf
+                                ? "border-slate-800 bg-slate-800 text-white font-semibold"
+                                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                            }`}
+                          >
+                            {inf}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="hidden print:block font-bold text-slate-900">
+                        {form.influencer}
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Retention Roadmap */}
+                  <tr>
+                    <td className="py-4 pr-4 font-semibold text-slate-500 align-top">
+                      3. Completion Intent Status
+                    </td>
+                    <td className="py-4">
+                      <div className="flex gap-2 max-w-xs no-print">
+                        {["Yes", "No", "Uncertain"].map((v) => (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() =>
+                              setForm({ ...form, retention_intent: v })
+                            }
+                            className={`flex-1 py-1.5 rounded border text-xs font-medium transition ${
+                              form.retention_intent === v
+                                ? "bg-slate-900 text-white border-slate-900 font-semibold"
+                                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="hidden print:block font-bold text-slate-900">
+                        {form.retention_intent}
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Alternative Alignment Matrix */}
+                  <tr>
+                    <td className="py-4 pr-4 font-semibold text-slate-500 align-top">
+                      4. Preferred Course Alternative
+                    </td>
+                    <td className="py-4">
+                      <select
+                        className="w-full max-w-md p-2 bg-white rounded-lg border border-slate-200 outline-none focus:border-slate-400 text-xs md:text-sm no-print"
+                        value={form.alternative_course_id}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            alternative_course_id: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">STAY IN CURRENT COURSE</option>
+                        {courses.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="hidden print:block font-bold text-slate-900">
+                        {chosenAlternativeCourse}
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Roadblocks Tracking */}
+                  <tr>
+                    <td className="py-4 pr-4 font-semibold text-slate-500 align-top">
+                      5. Primary Roadblock Tracker
+                    </td>
+                    <td className="py-4">
+                      <select
+                        className="w-full max-w-md p-2 bg-white rounded-lg border border-slate-200 outline-none focus:border-slate-400 text-xs md:text-sm no-print"
+                        value={form.primary_challenge}
+                        onChange={(e) =>
+                          setForm({ ...form, primary_challenge: e.target.value })
+                        }
+                      >
+                        <option>None</option>
+                        <option>Academic Difficulty</option>
+                        <option>Financial Struggles</option>
+                        <option>Lack of Interest</option>
+                        <option>Career Prospects Doubt</option>
+                        <option>Family Pressure</option>
+                      </select>
+                      <div className="hidden print:block font-bold text-slate-900">
+                        {form.primary_challenge}
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Deep-Dive Narrative Textarea */}
+                  <tr>
+                    <td className="py-4 pr-4 font-semibold text-slate-500 align-top">
+                      6. Contextual Notes / Explanations
+                    </td>
+                    <td className="py-4">
+                      <textarea
+                        rows={3}
+                        className="w-full p-3 bg-white rounded-lg border border-slate-200 outline-none focus:border-slate-400 text-xs md:text-sm no-print placeholder:text-slate-300"
+                        placeholder="Provide raw breakdown or specific structural reasons behind selection mappings..."
+                        value={form.reason_text}
+                        onChange={(e) =>
+                          setForm({ ...form, reason_text: e.target.value })
+                        }
+                      />
+                      <p className="hidden print:block font-medium text-slate-700 whitespace-pre-wrap italic">
+                        {form.reason_text || "No notes submitted."}
+                      </p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Form Actions submission Block */}
+            <button
+              type="submit"
+              className="no-print w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-sm tracking-wide transition shadow-sm"
+            >
+              SUBMIT CONFIDENTIAL DATA MATRIX
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* ── HIDDEN REPORT PRINT ZONE ────────────────────────────────────────── */}
+      <div id="course-report-print-zone" className="hidden">
+        <div className="p-10 text-slate-900 bg-white min-h-screen">
+          <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6 mb-8">
+            <div>
+              <h1 className="text-2xl font-black">MAGO TECHNICAL & VOCATIONAL COLLEGE</h1>
+              <h2 className="text-sm font-bold uppercase tracking-widest text-slate-500">Institutional Metric Registry Report</h2>
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-bold uppercase text-slate-400">Generation Timestamp</p>
+              <p className="text-sm font-black">{new Date().toLocaleString()}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-8 mb-8">
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <p className="text-[10px] font-black uppercase text-slate-400">Academic Division Scope</p>
+              <p className="text-sm font-bold">{selectedDeptName}</p>
+            </div>
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <p className="text-[10px] font-black uppercase text-slate-400">Target Pipeline</p>
+              <p className="text-sm font-bold">{selectedCourseName}</p>
+            </div>
+          </div>
+
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-slate-900 text-white text-[9px] font-black uppercase tracking-wider">
+                <th className="p-3 text-left border border-slate-800">Student ID</th>
+                <th className="p-3 text-left border border-slate-800">Full Name</th>
+                <th className="p-3 text-left border border-slate-800">Gender</th>
+                <th className="p-3 text-left border border-slate-800">Phone</th>
+                <th className="p-3 text-center border border-slate-800">Intake</th>
+                <th className="p-3 text-center border border-slate-800">Satisfaction</th>
+                <th className="p-3 text-right border border-slate-800">Last Sync</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 text-[10px]">
+              {studentsInCourse.map(s => (
+                <tr key={s.id}>
+                  <td className="p-2.5 font-mono font-bold border border-slate-100">{s.id}</td>
+                  <td className="p-2.5 font-bold border border-slate-100">{s.name}</td>
+                  <td className="p-2.5 border border-slate-100">{s.gender}</td>
+                  <td className="p-2.5 border border-slate-100">{s.phone}</td>
+                  <td className="p-2.5 text-center border border-slate-100">{s.intake_year}</td>
+                  <td className="p-2.5 text-center border border-slate-100">
+                    <span className="font-black">{s.satisfaction || 'PENDING'}</span>
+                  </td>
+                  <td className="p-2.5 text-right border border-slate-100">
+                    {s.updated_at ? new Date(s.updated_at).toLocaleDateString() : 'N/A'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="mt-12 pt-8 border-t border-slate-200 grid grid-cols-2 gap-12">
+            <div>
+              <p className="text-[10px] font-black uppercase text-slate-400 mb-6">Departmental Head Signature</p>
+              <div className="border-b border-slate-300 h-10 w-full"></div>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase text-slate-400 mb-6">Institutional Compliance Seal</p>
+              <div className="border-b border-slate-300 h-10 w-full"></div>
+            </div>
+          </div>
+          
+          <div className="mt-8 text-center">
+             <p className="text-[8px] text-slate-400 font-mono">This document represents a system-generated snapshot of institutional satisfaction metrics.</p>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
+

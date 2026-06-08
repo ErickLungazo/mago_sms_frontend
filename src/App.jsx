@@ -51,6 +51,12 @@ const NAV_ITEMS = [
     icon: "💼",
     path: "/job-placements",
   },
+  {
+    id: "my-profile",
+    label: "My Profile",
+    icon: "👤",
+    path: "/my-profile",
+  },
 ];
 
 const SATISFACTION_COLORS = {
@@ -430,14 +436,14 @@ function Dashboard({ dbData }) {
               margin: "0 0 4px",
               fontSize: "clamp(20px, 5vw, 28px)",
               fontWeight: 700,
-              color: "#111827",
+              color: BRAND,
             }}
           >
-            Career Guidance Office Dashboard
+            MAGO TECHNICAL AND VOCATIONAL COLLEGE
           </h1>
-          <p style={{ margin: "0 0 8px", color: "#6b7280", fontSize: 14 }}>
-            Mago TVTC — Operational Analytics Report
-          </p>
+          <h2 style={{ margin: "0 0 8px", color: "#374151", fontSize: 18, fontWeight: 600, textTransform: 'uppercase' }}>
+            Career Analytics Intelligence Report
+          </h2>
           <p style={{ margin: 0, color: "#9ca3af", fontSize: 12 }}>
             Generated: {new Date().toLocaleDateString()} |{" "}
             {new Date().toLocaleTimeString()}
@@ -860,8 +866,8 @@ function Dashboard({ dbData }) {
               table { font-size: 11px !important; }
               th, td { padding: 8px 6px !important; }
               .badge-print { border: 1px solid #ccc !important; padding: 1px 4px !important; }
-              .only-print-ledger { display: none !important; }
-              .only-print-ledger #student-report-ledger { display: block !important; width: 100% !important; position: absolute; top: 0; left: 0; }
+              .only-print-ledger > *:not(#student-report-ledger) { display: none !important; }
+              .only-print-ledger #student-report-ledger { display: block !important; width: 100% !important; margin: 0 !important; }
             }
             .no-print-table-header { display: none; }
           `}</style>
@@ -890,7 +896,7 @@ function Dashboard({ dbData }) {
                 letterSpacing: "1px",
               }}
             >
-              Career Analytics Intelligent Report
+              Career Analytics Intelligence Report
             </h2>
             <div
               style={{
@@ -1928,17 +1934,37 @@ function Students({ dbData, onRefresh, headers }) {
         satisfaction: filterSatisfaction,
       };
       const res = await api.get("/students", { params });
-      // The api.js interceptor already unwraps response.data.data
+      
+      // Robustly extract data array and meta information
       const result = res.data;
-      if (result) {
-        setPaginatedData({
-          data: result.data || [],
-          meta: {
-            last_page: result.last_page || 1,
-            total: result.total || 0,
-          },
-        });
+      let studentsList = [];
+      let lastPage = 1;
+      let totalCount = 0;
+
+      if (Array.isArray(result)) {
+        studentsList = result;
+        totalCount = result.length;
+      } else if (result && result.data && Array.isArray(result.data)) {
+        studentsList = result.data;
+        lastPage = result.last_page || 1;
+        totalCount = result.total || 0;
+      } else if (result && Array.isArray(result.students)) {
+        studentsList = result.students;
+        totalCount = result.students.length;
+      } else if (result && !Array.isArray(result) && typeof result === 'object') {
+        // Handle cases where interceptor might have unwrapped the data object but result is still the pagination object
+        studentsList = result.data || [];
+        lastPage = result.last_page || 1;
+        totalCount = result.total || 0;
       }
+
+      setPaginatedData({
+        data: studentsList,
+        meta: {
+          last_page: lastPage,
+          total: totalCount,
+        },
+      });
     } catch (err) {
       setCompError("Failed to fetch students.");
     } finally {
@@ -2064,20 +2090,84 @@ function Students({ dbData, onRefresh, headers }) {
     setPage(1);
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
-    <div>
-      <SectionHeader
-        title="Student Records Registry"
-        action="Enrol Student"
-        onAction={() => {
-          if (showForm && !editingStudent) {
-            setShowForm(false);
-          } else {
-            resetForm(); // We can call resetForm here because we are setting showForm(true) immediately after
-            setShowForm(true);
-          }
-        }}
-      />
+    <div id="students-registry-area">
+      <style>{`
+        @media print {
+          nav, [data-no-print], .no-print, button, input, select { display: none !important; }
+          body { background: white; margin: 0; padding: 0; }
+          #students-registry-area { width: 100%; margin: 0; padding: 0; }
+          .print-only { display: block !important; }
+          table { font-size: 11px !important; width: 100% !important; }
+          th, td { padding: 8px 6px !important; border-bottom: 1px solid #eee !important; }
+          .badge-print { border: 1px solid #ccc !important; padding: 1px 4px !important; background: none !important; color: black !important; }
+        }
+        .print-only { display: none; }
+      `}</style>
+
+      {/* Branding for Print-only */}
+      <div className="print-only" style={{ marginBottom: 30, textAlign: 'center' }}>
+        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: BRAND }}>
+          MAGO TECHNICAL AND VOCATIONAL COLLEGE
+        </h1>
+        <h2 style={{ margin: "5px 0 20px", fontSize: 18, fontWeight: 600, color: "#374151", textTransform: 'uppercase', letterSpacing: '1px' }}>
+          Career Analytics Intelligence Report
+        </h2>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6b7280", borderBottom: "2px solid #f3f4f6", paddingBottom: 8 }}>
+          <span>Generated: {new Date().toLocaleDateString()}</span>
+          <span>Records: {paginatedData.meta.total} students</span>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }} className="no-print">
+        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#111827" }}>
+          Student Records Registry
+        </h2>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={handlePrint}
+            style={{
+              background: "#10b981",
+              color: "#fff",
+              border: "none",
+              borderRadius: 7,
+              padding: "7px 16px",
+              fontSize: 13,
+              cursor: "pointer",
+              fontWeight: 500,
+            }}
+          >
+            🖨️ Print Registry
+          </button>
+          <button
+            onClick={() => {
+              if (showForm && !editingStudent) {
+                setShowForm(false);
+              } else {
+                resetForm();
+                setShowForm(true);
+              }
+            }}
+            style={{
+              background: BRAND,
+              color: "#fff",
+              border: "none",
+              borderRadius: 7,
+              padding: "7px 16px",
+              fontSize: 13,
+              cursor: "pointer",
+              fontWeight: 500,
+            }}
+          >
+            + Enrol Student
+          </button>
+        </div>
+      </div>
+
       {showForm && (
         <div
           style={{
@@ -2975,7 +3065,16 @@ function Certifications({ dbData, onRefresh }) {
     setCompLoading(true);
     setCompError("");
     try {
-      const payload = { ...levelForm, certification_id: selectedCertId };
+      const payload = {
+        ...levelForm,
+        certification_id: selectedCertId,
+        period_count: levelForm.period_count
+          ? parseInt(levelForm.period_count, 10)
+          : null,
+        default_modules_count: levelForm.default_modules_count
+          ? parseInt(levelForm.default_modules_count, 10)
+          : 0,
+      };
       if (editingLevel) {
         await api.put(`/certification-levels/${editingLevel.id}`, payload);
       } else {
@@ -3465,9 +3564,9 @@ function Certifications({ dbData, onRefresh }) {
                           setLevelForm({
                             name: lvl.name || "",
                             duration_type: lvl.duration_type || "Months",
-                            period_count: lvl.period_count || "",
+                            period_count: lvl.period_count?.toString() || "",
                             default_modules_count:
-                              lvl.default_modules_count || "",
+                              lvl.default_modules_count?.toString() || "1",
                           });
                           setShowLevelForm(true);
                         }}
@@ -3527,6 +3626,405 @@ function Certifications({ dbData, onRefresh }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function MyProfile({ dbData, onRefresh }) {
+  const [activeTab, setActiveTab] = useState("profile");
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    phone: "",
+    specialisation: "",
+  });
+  const [passForm, setPassForm] = useState({
+    current_password: "",
+    new_password: "",
+    new_password_confirmation: "",
+  });
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState({ text: "", type: "" });
+  const [passLoading, setPassLoading] = useState(false);
+  const [passMessage, setPassMessage] = useState({ text: "", type: "" });
+
+  useEffect(() => {
+    if (dbData.user) {
+      setProfileForm({
+        name: dbData.user.name || "",
+        phone: dbData.user.staff?.phone || "",
+        specialisation: dbData.user.staff?.specialisation || "",
+      });
+    }
+  }, [dbData.user]);
+
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setUpdateLoading(true);
+    setUpdateMessage({ text: "", type: "" });
+    try {
+      await api.post("/user/profile-update", profileForm);
+      setUpdateMessage({
+        text: "Profile updated successfully!",
+        type: "success",
+      });
+      onRefresh();
+    } catch (err) {
+      setUpdateMessage({
+        text: err.response?.data?.message || "Update failed.",
+        type: "error",
+      });
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+
+  const handlePasswordUpdate = async (e) => {
+    e.preventDefault();
+    setPassLoading(true);
+    setPassMessage({ text: "", type: "" });
+    try {
+      await api.post("/user/password-change", passForm);
+      setPassMessage({
+        text: "Password changed successfully!",
+        type: "success",
+      });
+      setPassForm({
+        current_password: "",
+        new_password: "",
+        new_password_confirmation: "",
+      });
+    } catch (err) {
+      setPassMessage({
+        text: err.response?.data?.message || "Change failed.",
+        type: "error",
+      });
+    } finally {
+      setPassLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <h2 style={{ marginBottom: 20 }}>Account Settings</h2>
+
+      <div style={{ display: "flex", gap: 20, marginBottom: 20 }}>
+        <button
+          onClick={() => setActiveTab("profile")}
+          style={{
+            padding: "10px 20px",
+            borderRadius: 8,
+            border: "none",
+            background: activeTab === "profile" ? BRAND : "#eee",
+            color: activeTab === "profile" ? "#fff" : "#333",
+            cursor: "pointer",
+            fontWeight: 600,
+          }}
+        >
+          My Profile
+        </button>
+        <button
+          onClick={() => setActiveTab("security")}
+          style={{
+            padding: "10px 20px",
+            borderRadius: 8,
+            border: "none",
+            background: activeTab === "security" ? BRAND : "#eee",
+            color: activeTab === "security" ? "#fff" : "#333",
+            cursor: "pointer",
+            fontWeight: 600,
+          }}
+        >
+          Security
+        </button>
+      </div>
+
+      {activeTab === "profile" ? (
+        <div
+          style={{
+            background: "#fff",
+            padding: 24,
+            borderRadius: 12,
+            border: "1px solid #e5e7eb",
+            maxWidth: 600,
+          }}
+        >
+          <h3 style={{ marginTop: 0, marginBottom: 16 }}>
+            Personal Information
+          </h3>
+          {updateMessage.text && (
+            <div
+              style={{
+                padding: 12,
+                borderRadius: 8,
+                marginBottom: 16,
+                background:
+                  updateMessage.type === "success" ? "#f0fdf4" : "#fef2f2",
+                color: updateMessage.type === "success" ? "#166534" : "#991b1b",
+                fontSize: 14,
+              }}
+            >
+              {updateMessage.text}
+            </div>
+          )}
+          <form onSubmit={handleProfileUpdate}>
+            <div style={{ marginBottom: 16 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  marginBottom: 6,
+                }}
+              >
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={profileForm.name}
+                onChange={(e) =>
+                  setProfileForm({ ...profileForm, name: e.target.value })
+                }
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  borderRadius: 8,
+                  border: "1px solid #d1d5db",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  marginBottom: 6,
+                }}
+              >
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={dbData.user?.email || ""}
+                disabled
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  borderRadius: 8,
+                  border: "1px solid #d1d5db",
+                  background: "#f9fafb",
+                  cursor: "not-allowed",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  marginBottom: 6,
+                }}
+              >
+                Phone Number
+              </label>
+              <input
+                type="text"
+                value={profileForm.phone}
+                onChange={(e) =>
+                  setProfileForm({ ...profileForm, phone: e.target.value })
+                }
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  borderRadius: 8,
+                  border: "1px solid #d1d5db",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: 24 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  marginBottom: 6,
+                }}
+              >
+                Specialisation
+              </label>
+              <input
+                type="text"
+                value={profileForm.specialisation}
+                onChange={(e) =>
+                  setProfileForm({
+                    ...profileForm,
+                    specialisation: e.target.value,
+                  })
+                }
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  borderRadius: 8,
+                  border: "1px solid #d1d5db",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={updateLoading}
+              style={{
+                background: BRAND,
+                color: "#fff",
+                border: "none",
+                padding: "12px 24px",
+                borderRadius: 8,
+                fontWeight: 700,
+                cursor: "pointer",
+                opacity: updateLoading ? 0.7 : 1,
+              }}
+            >
+              {updateLoading ? "Saving..." : "Update Profile"}
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div
+          style={{
+            background: "#fff",
+            padding: 24,
+            borderRadius: 12,
+            border: "1px solid #e5e7eb",
+            maxWidth: 600,
+          }}
+        >
+          <h3 style={{ marginTop: 0, marginBottom: 16 }}>Change Password</h3>
+          {passMessage.text && (
+            <div
+              style={{
+                padding: 12,
+                borderRadius: 8,
+                marginBottom: 16,
+                background:
+                  passMessage.type === "success" ? "#f0fdf4" : "#fef2f2",
+                color: passMessage.type === "success" ? "#166534" : "#991b1b",
+                fontSize: 14,
+              }}
+            >
+              {passMessage.text}
+            </div>
+          )}
+          <form onSubmit={handlePasswordUpdate}>
+            <div style={{ marginBottom: 16 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  marginBottom: 6,
+                }}
+              >
+                Current Password
+              </label>
+              <input
+                type="password"
+                value={passForm.current_password}
+                onChange={(e) =>
+                  setPassForm({
+                    ...passForm,
+                    current_password: e.target.value,
+                  })
+                }
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  borderRadius: 8,
+                  border: "1px solid #d1d5db",
+                  boxSizing: "border-box",
+                }}
+                required
+              />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  marginBottom: 6,
+                }}
+              >
+                New Password
+              </label>
+              <input
+                type="password"
+                value={passForm.new_password}
+                onChange={(e) =>
+                  setPassForm({ ...passForm, new_password: e.target.value })
+                }
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  borderRadius: 8,
+                  border: "1px solid #d1d5db",
+                  boxSizing: "border-box",
+                }}
+                required
+              />
+            </div>
+            <div style={{ marginBottom: 24 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  marginBottom: 6,
+                }}
+              >
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                value={passForm.new_password_confirmation}
+                onChange={(e) =>
+                  setPassForm({
+                    ...passForm,
+                    new_password_confirmation: e.target.value,
+                  })
+                }
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  borderRadius: 8,
+                  border: "1px solid #d1d5db",
+                  boxSizing: "border-box",
+                }}
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={passLoading}
+              style={{
+                background: "#333",
+                color: "#fff",
+                border: "none",
+                padding: "12px 24px",
+                borderRadius: 8,
+                fontWeight: 700,
+                cursor: "pointer",
+                opacity: passLoading ? 0.7 : 1,
+              }}
+            >
+              {passLoading ? "Updating..." : "Change Password"}
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
@@ -3779,8 +4277,20 @@ export default function App() {
           }
         />
         <Route path="/analytics" element={<Analytics />} />
-        <Route path="/interventions" element={<Interventions />} />
+        <Route
+          path="/interventions"
+          element={<Interventions onRefresh={fetchCompleteBackendState} />}
+        />
         <Route path="/job-placements" element={<JobPlacement />} />
+        <Route
+          path="/my-profile"
+          element={
+            <MyProfile
+              dbData={dbData}
+              onRefresh={fetchCompleteBackendState}
+            />
+          }
+        />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     );
@@ -3808,13 +4318,27 @@ export default function App() {
       <Route
         path="/"
         element={
-          <Landing
-            onPortalLogin={() => {
-              if (!token) navigate("/login");
-              else if (userType === "student") navigate("/student");
-              else navigate("/dashboard");
+          token ? (
+            <Navigate to={userType === "student" ? "/student" : "/dashboard"} replace />
+          ) : (
+            <Landing
+              onPortalLogin={(type) => {
+              if (token) {
+                navigate(userType === "student" ? "/student" : "/dashboard");
+                return;
+              }
+              if (type === "student") {
+                setLoginType("student");
+                setIdentifier("");
+                setPassword("");
+                setLoginError("");
+                navigate("/login?studentOnly=true");
+              } else {
+                navigate("/login");
+              }
             }}
           />
+          )
         }
       />
       <Route
@@ -3900,7 +4424,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div style={{ padding: 10 }}>
+                <div style={{ padding: 10, flex: 1, overflowY: "auto" }}>
                   {NAV_ITEMS.map((item) => {
                     const isActive = location.pathname === item.path;
                     return (
@@ -3938,34 +4462,62 @@ export default function App() {
                 {/* User Account / Sign Out Section */}
                 <div
                   style={{
-                    padding: 14,
-                    borderTop: "0.5px solid #e5e7eb",
+                    padding: "20px 16px",
+                    borderTop: "1px solid #f3f4f6",
                     background: "#f9fafb",
+                    marginTop: "auto",
                   }}
                 >
                   <div
                     style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: "#374151",
-                      textOverflow: "ellipsis",
-                      overflow: "hidden",
-                      whiteSpace: "nowrap",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      marginBottom: 16,
                     }}
                   >
-                    {dbData.user?.name || "Officer Account"}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 10,
-                      color: "#6b7280",
-                      marginBottom: 10,
-                      textOverflow: "ellipsis",
-                      overflow: "hidden",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {dbData.user?.email}
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: "50%",
+                        background: BRAND,
+                        color: "#fff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 14,
+                        fontWeight: 700,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {(dbData.user?.name || "U").charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ overflow: "hidden" }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: "#111827",
+                          textOverflow: "ellipsis",
+                          overflow: "hidden",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {dbData.user?.name || "Officer Account"}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "#6b7280",
+                          textOverflow: "ellipsis",
+                          overflow: "hidden",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {dbData.user?.email}
+                      </div>
+                    </div>
                   </div>
                   <button
                     onClick={handleLogout}
@@ -3974,14 +4526,19 @@ export default function App() {
                       background: "#fee2e2",
                       color: "#dc2626",
                       border: "none",
-                      padding: "6px 10px",
-                      borderRadius: 6,
+                      padding: "10px 12px",
+                      borderRadius: 8,
                       fontSize: 12,
-                      fontWeight: 500,
+                      fontWeight: 600,
                       cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      transition: "background 0.2s",
                     }}
                   >
-                    Sign Out Session
+                    <span>🚪</span> Sign Out Session
                   </button>
                 </div>
               </div>
@@ -3989,7 +4546,7 @@ export default function App() {
               {/* Main Frame Page Container */}
               <div
                 className="app-main"
-                style={{ flex: 1, padding: 24, overflowY: "auto" }}
+                style={{ flex: 1, padding: 24, overflowY: "auto", minHeight: 0 }}
               >
                 <div className="app-topbar">
                   <button
@@ -4079,67 +4636,69 @@ export default function App() {
                     : "Student Portal Access"}
                 </div>
 
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    marginBottom: 20,
-                    background: "#f3f4f6",
-                    padding: 4,
-                    borderRadius: 12,
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoginType("staff");
-                      setIdentifier("");
-                      setPassword("");
-                      setLoginError("");
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: 10,
-                      borderRadius: 10,
-                      border:
-                        loginType === "staff"
-                          ? `1px solid ${BRAND}`
-                          : "1px solid transparent",
-                      background:
-                        loginType === "staff" ? "#ffffff" : "transparent",
-                      color: loginType === "staff" ? BRAND : "#6b7280",
-                      cursor: "pointer",
-                      fontWeight: 700,
-                    }}
-                  >
-                    Staff
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoginType("student");
-                      setIdentifier("");
-                      setPassword("");
-                      setLoginError("");
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: 10,
-                      borderRadius: 10,
-                      border:
-                        loginType === "student"
-                          ? `1px solid ${BRAND}`
-                          : "1px solid transparent",
-                      background:
-                        loginType === "student" ? "#ffffff" : "transparent",
-                      color: loginType === "student" ? BRAND : "#6b7280",
-                      cursor: "pointer",
-                      fontWeight: 700,
-                    }}
-                  >
-                    Student
-                  </button>
-                </div>
+                {!window.location.search.includes("studentOnly") && (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 8,
+                        marginBottom: 20,
+                        background: "#f3f4f6",
+                        padding: 4,
+                        borderRadius: 12,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLoginType("staff");
+                          setIdentifier("");
+                          setPassword("");
+                          setLoginError("");
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: 10,
+                          borderRadius: 10,
+                          border:
+                            loginType === "staff"
+                              ? `1px solid ${BRAND}`
+                              : "1px solid transparent",
+                          background:
+                            loginType === "staff" ? "#ffffff" : "transparent",
+                          color: loginType === "staff" ? BRAND : "#6b7280",
+                          cursor: "pointer",
+                          fontWeight: 700,
+                        }}
+                      >
+                        Staff
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLoginType("student");
+                          setIdentifier("");
+                          setPassword("");
+                          setLoginError("");
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: 10,
+                          borderRadius: 10,
+                          border:
+                            loginType === "student"
+                              ? `1px solid ${BRAND}`
+                              : "1px solid transparent",
+                          background:
+                            loginType === "student" ? "#ffffff" : "transparent",
+                          color: loginType === "student" ? BRAND : "#6b7280",
+                          cursor: "pointer",
+                          fontWeight: 700,
+                        }}
+                      >
+                        Student
+                      </button>
+                    </div>
+                  )}
 
                 {loginError && (
                   <div
@@ -4240,7 +4799,7 @@ export default function App() {
               </form>
             </div>
           ) : (
-            <Navigate to="/" replace />
+            <Navigate to="/student" replace />
           )
         }
       />

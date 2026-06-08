@@ -40,13 +40,18 @@ export default function JobPlacement() {
         },
       });
       const payload = res.data.data || res.data || {};
-      const dataRows = payload.data || payload;
-      setPlacements(Array.isArray(dataRows) ? dataRows : []);
-      setTotalPages(payload.meta?.last_page || payload.meta?.lastPage || 1);
+
+      // Handle wrapped structure: { placements: { data: [] }, stats: {} }
+      const placementsData = payload.placements || payload;
+      const dataRows = placementsData.data || (Array.isArray(placementsData) ? placementsData : []);
+
+      setPlacements(dataRows);
+      setTotalPages(placementsData.meta?.last_page || placementsData.last_page || 1);
+
       setStats({
-        employment_rate: res.data.stats?.employment_rate || 0,
-        self_employed_rate: res.data.stats?.self_employed_rate || 0,
-        average_salary: res.data.stats?.average_salary || 0,
+        employment_rate: payload.stats?.employment_rate || 0,
+        self_employed_rate: payload.stats?.self_employed_rate || 0,
+        average_salary: payload.stats?.average_salary || 0,
       });
     } catch {
       setError("Unable to load placement records.");

@@ -159,7 +159,9 @@ body {
 
   .app-sidebar {
     position: fixed;
-    inset: 0 auto auto 0;
+    top: 0;
+    left: 0;
+    bottom: 0;
     width: min(280px, 100%);
     max-width: 100%;
     transform: translateX(-100%);
@@ -208,6 +210,22 @@ body {
 
   .app-main {
     padding-top: 72px;
+  }
+}
+
+@media print {
+  html, body, #root, .app-shell, .app-main {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+    position: static !important;
+  }
+  .app-sidebar, .app-sidebar-header, .no-print {
+    display: none !important;
+  }
+  .app-main {
+    padding: 0 !important;
   }
 }
 

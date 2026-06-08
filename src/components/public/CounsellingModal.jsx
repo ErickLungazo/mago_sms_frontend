@@ -4,6 +4,7 @@ import api from "../../api";
 export default function CounsellingModal({
   isOpen,
   onClose,
+  onSuccess,
   initialValues = {},
 }) {
   const [departments, setDepartments] = useState([]);
@@ -63,6 +64,7 @@ export default function CounsellingModal({
     try {
       await api.post("/public/counselling", form);
       setSuccess(true);
+      if (onSuccess) onSuccess();
     } catch {
       setError("Submission failed. Ensure your Admission Number is valid.");
     } finally {
